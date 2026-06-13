@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F0F4FF;
+  --surface: #FFFFFF;
+  --surface2: #F5F7FF;
+  --border: #E4E9FF;
+  --border2: #C8D1F8;
+  --txt1: #0D1240;
+  --txt2: #5A6080;
+  --txt3: #9BA3C8;
+  --accent: #3B5BFF;
+  --accent-l: #EEF1FF;
+  --nav-bg: #FFFFFF;
+  --card-bg: #FFFFFF;
+  --placeholder: #EEF1FF;
+  --miss-bg: #FFF1F1;
+  --miss-b: #FECACA;
+  --miss-t: #DC2626;
+  --have-bg: #F0FDF4;
+  --have-b: #86EFAC;
+  --have-t: #16A34A;
+}
+
+[data-theme="dark"] {
+  --bg: #0A0D1F;
+  --surface: #131729;
+  --surface2: #1A1F38;
+  --border: #232848;
+  --border2: #3040A0;
+  --txt1: #E8ECFF;
+  --txt2: #8890C0;
+  --txt3: #454D80;
+  --accent: #5B7AFF;
+  --accent-l: #141A40;
+  --nav-bg: #131729;
+  --card-bg: #131729;
+  --placeholder: #1A1F38;
+  --miss-bg: rgba(220,38,38,0.15);
+  --miss-b: rgba(252,165,165,0.3);
+  --miss-t: #F87171;
+  --have-bg: rgba(22,163,74,0.15);
+  --have-b: rgba(134,239,172,0.3);
+  --have-t: #4ADE80;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--txt1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scanner animation */
+.scan-line {
+  animation: scanline 2s ease-in-out infinite;
+}
+@keyframes scanline {
+  0% { top: 5%; opacity: 1; }
+  50% { top: 90%; opacity: 0.7; }
+  100% { top: 5%; opacity: 1; }
+}
+
+/* Vol chip */
+.vol-chip {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  flex-shrink: 0;
+}
+.vol-have { background: var(--have-bg); color: var(--have-t); border: 1px solid var(--have-b); }
+.vol-miss { background: var(--miss-bg); color: var(--miss-t); border: 1px dashed var(--miss-b); }
+.vol-new  { background: var(--accent); color: #fff; box-shadow: 0 0 0 2px var(--accent-l); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* PWA safe area */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
