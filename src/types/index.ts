@@ -81,3 +81,26 @@ export interface SharedLibrary {
   claimed_count: number;
   cover_url?: string;
 }
+
+export interface WishlistItem {
+  id: string;
+  title: string;
+  authors: string[];
+  cover_url?: string;
+  series_index?: number;
+  isbn?: string;
+  claimed_by?: string;
+  claimed_by_name?: string;
+  claimed_at?: string;
+}
+
+export interface Wishlist {
+  id: string;
+  collection_id: string;
+  collection_name: string;
+  owner_name: string;
+  owner_id: string;
+  missing_items: WishlistItem[];
+  created_at: string;
+  expires_at?: string;
+}
