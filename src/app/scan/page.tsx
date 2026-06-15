@@ -15,17 +15,17 @@ const MODES = [
 ] as const;
 
 export default function ScanPage() {
-  const { data: session }               = useSession();
-  const [scanning,   setScanning]       = useState(false);
-  const [rapidMode,  setRapidMode]      = useState(false);
-  const [libraryId,  setLibraryId]      = useState<string | null>(null);
-  const [libLoading, setLibLoading]     = useState(true);
-  const isFirstUse                      = useFirstUse("folio_scan_seen");
-  const { toasts, push, dismiss }       = useToast();
+  const { data: session }           = useSession();
+  const [scanning,   setScanning]   = useState(false);
+  const [rapidMode,  setRapidMode]  = useState(false);
+  const [libraryId,  setLibraryId]  = useState<string | null>(null);
+  const [libLoading, setLibLoading] = useState(true);
+  const isFirstUse                  = useFirstUse("folio_scan_seen");
+  const { toasts, push, dismiss }   = useToast();
 
   useEffect(() => {
-    if (!session?.user?.id) return;
-    fetch(`/api/library?user_id=${session.user.id}`)
+    if (!session?.user?.email) return;
+    fetch(`/api/library?email=${session.user.email}`)
       .then(r => r.json())
       .then(d => { if (d.id) setLibraryId(d.id); })
       .catch(() => {})
@@ -43,10 +43,6 @@ export default function ScanPage() {
     }
   }, [rapidMode, push]);
 
-  const handleOpen = () => {
-    if (libraryId) setScanning(true);
-  };
-
   if (isFirstUse === null) return null;
 
   const ready = !!libraryId && !libLoading;
@@ -59,7 +55,6 @@ export default function ScanPage() {
           <h1 className="font-bold" style={{ fontSize: 26, color: "var(--txt1)" }}>Scanner</h1>
         </div>
 
-        {/* Mode toggle */}
         <div className="mx-4 mb-6 flex p-1 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           {MODES.map(({ key, icon: Icon, label, sub }) => (
             <button key={String(key)} onClick={() => setRapidMode(key)}
@@ -75,8 +70,8 @@ export default function ScanPage() {
         </div>
 
         {isFirstUse
-          ? <FirstUseInstructions onStart={handleOpen} ready={ready} />
-          : <ScanButton rapidMode={rapidMode} onStart={handleOpen} ready={ready} />
+          ? <FirstUseInstructions onStart={() => ready && setScanning(true)} ready={ready} />
+          : <ScanButton rapidMode={rapidMode} onStart={() => ready && setScanning(true)} ready={ready} />
         }
       </div>
 
@@ -84,7 +79,7 @@ export default function ScanPage() {
         <Scanner
           rapidMode={rapidMode}
           libraryId={libraryId}
-          userId={session?.user?.id ?? ""}
+          userId={session?.user?.email ?? ""}
           onSuccess={handleSuccess}
           onClose={() => setScanning(false)}
         />
@@ -99,19 +94,12 @@ export default function ScanPage() {
 function ScanButton({ rapidMode, onStart, ready }: { rapidMode: boolean; onStart: () => void; ready: boolean }) {
   return (
     <div className="flex flex-col items-center gap-4 px-5">
-      <button
-        onClick={onStart}
-        disabled={!ready}
-        className="w-full py-5 rounded-3xl flex items-center justify-center gap-3 active:scale-95 transition-all"
-        style={{
-          background: ready ? "var(--accent)" : "var(--surface)",
-          boxShadow: ready ? "0 8px 32px rgba(59,91,255,0.35)" : "none",
-          opacity: ready ? 1 : 0.6,
-          cursor: ready ? "pointer" : "default",
-        }}>
-        {ready
-          ? <ScanLine className="w-7 h-7 text-white" />
-          : <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />}
+      <button onClick={onStart} disabled={!ready}
+        className="w-full py-5 rounded-3xl flex items-center justify-center gap-3 active:scale-95"
+        style={{ background: ready ? "var(--accent)" : "var(--surface)", boxShadow: ready ? "0 8px 32px rgba(59,91,255,0.35)" : "none", opacity: ready ? 1 : 0.6, cursor: ready ? "pointer" : "default" }}>
+        {!ready
+          ? <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
+          : <ScanLine className="w-7 h-7 text-white" />}
         <span className="font-bold text-white" style={{ fontSize: 17 }}>
           {!ready ? "Chargement…" : rapidMode ? "Lancer le mode rapide" : "Ouvrir le scanner"}
         </span>
@@ -133,27 +121,18 @@ function FirstUseInstructions({ onStart, ready }: { onStart: () => void; ready: 
   ];
   return (
     <div className="flex flex-col items-center gap-6 px-5">
-      <button
-        onClick={onStart}
-        disabled={!ready}
-        className="w-32 h-32 rounded-3xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all"
-        style={{
-          background: ready ? "var(--accent)" : "var(--surface)",
-          boxShadow: ready ? "0 8px 32px rgba(59,91,255,0.35)" : "none",
-          opacity: ready ? 1 : 0.6,
-          cursor: ready ? "pointer" : "default",
-        }}>
-        {ready
-          ? <ScanLine className="w-12 h-12 text-white" />
-          : <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />}
+      <button onClick={onStart} disabled={!ready}
+        className="w-32 h-32 rounded-3xl flex flex-col items-center justify-center gap-2 active:scale-95"
+        style={{ background: ready ? "var(--accent)" : "var(--surface)", boxShadow: ready ? "0 8px 32px rgba(59,91,255,0.35)" : "none", opacity: ready ? 1 : 0.6, cursor: ready ? "pointer" : "default" }}>
+        {!ready
+          ? <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+          : <ScanLine className="w-12 h-12 text-white" />}
         <span className="font-bold text-white text-sm">{ready ? "Scanner" : "..."}</span>
       </button>
-
       <div className="text-center">
         <p className="font-bold" style={{ fontSize: 17, color: "var(--txt1)" }}>Scannez le code-barres</p>
         <p style={{ fontSize: 14, color: "var(--txt3)", marginTop: 4 }}>ISBN au dos du livre ou de la BD</p>
       </div>
-
       <div className="w-full space-y-2">
         {STEPS.map((text, i) => (
           <div key={i} className="flex items-center gap-3 p-4 rounded-2xl"
