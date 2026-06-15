@@ -7,30 +7,25 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6"
       style={{ background: "var(--bg)" }}>
       <div className="flex flex-col items-center gap-8 max-w-sm w-full">
-        {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
             style={{ background: "var(--accent)", boxShadow: "0 4px 20px rgba(59,91,255,0.35)" }}>
             <BookOpen className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold" ...>Folio</h1>
+          <h1 className="text-4xl font-bold" style={{ color: "var(--txt1)" }}>Folio</h1>
           <p className="text-sm text-center" style={{ color: "var(--txt2)" }}>
             Votre bibliothèque partagée, toujours avec vous.
           </p>
         </div>
-
-        {/* Divider */}
         <div className="flex items-center gap-3 w-full">
           <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
           <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--txt3)" }}>Collection</span>
           <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
         </div>
-
-        {/* Features */}
         <div className="w-full space-y-2">
           {[
             { icon: "📷", text: "Scannez les codes-barres de vos livres" },
-            { icon: "📚", text: "Collections BD & manga automatiques" },
+            { icon: "📚", text: "Collections BD et manga automatiques" },
             { icon: "✨", text: "Partagez avec famille et amis" },
           ].map((f) => (
             <div key={f.text} className="flex items-center gap-3 px-4 py-3 rounded-xl"
@@ -40,8 +35,6 @@ export default function LoginPage() {
             </div>
           ))}
         </div>
-
-        {/* Google Sign In */}
         <button
           onClick={() => signIn("google", { callbackUrl: "/library" })}
           className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-semibold text-sm transition-all active:scale-95"
@@ -54,7 +47,6 @@ export default function LoginPage() {
           </svg>
           Continuer avec Google
         </button>
-
         <p className="text-xs text-center" style={{ color: "var(--txt3)" }}>
           Accès sécurisé · Données privées · Gratuit
         </p>
