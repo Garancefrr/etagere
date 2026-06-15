@@ -10,43 +10,30 @@ const handler = NextAuth({
     }),
   ],
   pages: {
-    signIn: "/",
-    error: "/",
+    signIn: "/login",
+    error: "/login",
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ account }) {
       if (account?.provider !== "google") return false;
-
-      // Sign in to Supabase with the Google token
       if (account.id_token) {
-        const { error } = await supabase.auth.signInWithIdToken({
+        await supabase.auth.signInWithIdToken({
           provider: "google",
           token: account.id_token,
         });
-        if (error) {
-          console.error("Supabase signIn error:", error);
-          return false;
-        }
       }
       return true;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-      }
+      if (session.user && token.sub) session.user.id = token.sub;
       return session;
     },
     async jwt({ token, account }) {
-      if (account) {
-        token.accessToken = account.access_token;
-        token.idToken = account.id_token;
-      }
+      if (account) token.idToken = account.id_token;
       return token;
     },
   },
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
 });
 
