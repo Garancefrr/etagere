@@ -1,219 +1,257 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
-import { X, Keyboard, RefreshCw, Check, BookOpen, Plus } from "lucide-react";
+import { X, Keyboard, RefreshCw, Check, Plus, BookOpen } from "lucide-react";
 import { ScanResult, ReadStatus, BookType } from "@/types";
+import { STATUS_CONFIG, TYPE_CONFIG } from "@/lib/constants";
+import { Cover } from "@/components/ui/Cover";
+import { Button } from "@/components/ui/Button";
+
+type Phase = "scanning" | "loading" | "confirm" | "not_found" | "error";
 
 interface Props {
+  rapidMode: boolean;
   onSuccess: (result: ScanResult, status: ReadStatus, bookType: BookType) => void;
   onClose: () => void;
 }
-type Phase = "scanning" | "loading" | "confirm" | "not_found" | "error";
 
-export default function Scanner({ onSuccess, onClose }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [phase, setPhase] = useState<Phase>("scanning");
-  const [isbn, setIsbn] = useState("");
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [status, setStatus] = useState<ReadStatus>("a_lire");
-  const [bookType, setBookType] = useState<BookType>("livre");
-  const [manualISBN, setManualISBN] = useState("");
+export default function Scanner({ rapidMode, onSuccess, onClose }: Props) {
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+
+  const [phase,      setPhase]      = useState<Phase>("scanning");
+  const [isbn,       setIsbn]       = useState("");
+  const [result,     setResult]     = useState<ScanResult | null>(null);
+  const [status,     setStatus]     = useState<ReadStatus>("a_lire");
+  const [bookType,   setBookType]   = useState<BookType>("livre");
+  const [manual,     setManual]     = useState("");
   const [showManual, setShowManual] = useState(false);
+
+  const addBook = useCallback(async (r: ScanResult, s: ReadStatus, bt: BookType) => {
+    await fetch("/api/books/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...r.book, book_type: bt, status: s, library_id: "lib1", added_by: "u1" }),
+    });
+    onSuccess(r, s, bt);
+  }, [onSuccess]);
 
   const lookup = useCallback(async (code: string) => {
     setIsbn(code);
     setPhase("loading");
     try {
       const res = await fetch(`/api/books/lookup?isbn=${code}&library_id=lib1`);
-      if (res.ok) {
-        const result: ScanResult = await res.json();
-        setScanResult(result);
-        setBookType(result.book.book_type);
+      if (!res.ok) { setPhase("not_found"); return; }
+      const data: ScanResult = await res.json();
+      setResult(data);
+      setBookType(data.book.book_type);
+      if (rapidMode) {
+        await addBook(data, "a_lire", data.book.book_type);
+        setPhase("scanning");
+        setResult(null);
+        setIsbn("");
+        startReader();
+      } else {
         setPhase("confirm");
-      } else { setPhase("not_found"); }
-    } catch { setPhase("error"); }
-  }, []);
-
-  useEffect(() => {
-    const reader = new BrowserMultiFormatReader();
-    let active = true;
-    if (videoRef.current) {
-      reader.decodeFromVideoDevice(null, videoRef.current, (result) => {
-        if (!active || !result) return;
-        active = false;
-        reader.reset();
-        lookup(result.getText());
-      });
+      }
+    } catch {
+      setPhase("error");
     }
+  }, [rapidMode, addBook]);
+
+  const startReader = useCallback(() => {
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
+    let active = true;
+    reader.decodeFromVideoDevice(null, videoRef.current!, (r) => {
+      if (!active || !r) return;
+      active = false;
+      reader.reset();
+      lookup(r.getText());
+    });
     return () => { active = false; reader.reset(); };
   }, [lookup]);
 
-  const reset = () => { setPhase("scanning"); setScanResult(null); setIsbn(""); };
+  useEffect(() => startReader(), [startReader]);
+
+  const reset = () => {
+    setPhase("scanning");
+    setResult(null);
+    setIsbn("");
+    readerRef.current?.reset();
+    startReader();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#060818" }}>
-      <div className="flex items-center justify-between px-5 pt-12 pb-3">
-        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
-          <X className="w-4 h-4 text-white" />
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-5 pt-12 pb-2">
+        <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(255,255,255,0.08)" }}>
+          <X className="w-5 h-5 text-white" />
         </button>
-        <span className="font-bold text-white">Scanner</span>
-        <button onClick={() => setShowManual(!showManual)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
-          <Keyboard className="w-4 h-4 text-white" />
+        <span className="font-bold text-white" style={{ fontSize: 16 }}>
+          {rapidMode ? "⚡ Mode rapide" : "Scanner"}
+        </span>
+        <button onClick={() => setShowManual(v => !v)} className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(255,255,255,0.08)" }}>
+          <Keyboard className="w-5 h-5 text-white" />
         </button>
       </div>
 
-      <div className="relative flex items-center justify-center" style={{ height: 200 }}>
-        <video ref={videoRef} style={{ width: 280, height: 200, objectFit: "cover", borderRadius: 8 }} />
-        <div className="absolute pointer-events-none" style={{ width: 240, height: 140, border: "1.5px solid rgba(91,122,255,0.5)", borderRadius: 8, position: "relative" }}>
-          {phase === "scanning" && (
-            <div className="scan-line" style={{ position: "absolute", left: 0, right: 0, height: 1.5, background: "linear-gradient(90deg,transparent,#5B7AFF,transparent)" }} />
+      {rapidMode && (
+        <div className="mx-5 mb-2 px-3 py-2 rounded-xl flex items-center gap-2"
+          style={{ background: "rgba(59,91,255,0.18)", border: "1px solid rgba(91,122,255,0.3)" }}>
+          <span style={{ fontSize: 12, color: "#7B80FF" }}>Ajout automatique à chaque scan</span>
+        </div>
+      )}
+
+      {/* Viewfinder */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="relative">
+          <video ref={videoRef} style={{ width: 300, height: 220, objectFit: "cover", borderRadius: 12 }} />
+          <ScanFrame active={phase === "scanning"} />
+        </div>
+      </div>
+
+      {/* Manual input */}
+      {showManual && (
+        <div className="flex gap-2 px-5 mb-3">
+          <input
+            type="text"
+            value={manual}
+            onChange={e => setManual(e.target.value)}
+            placeholder="Saisir ISBN..."
+            onKeyDown={e => e.key === "Enter" && manual && lookup(manual)}
+            className="flex-1 px-4 py-3 rounded-2xl outline-none"
+            style={{ background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(91,122,255,0.3)", fontSize: 15 }}
+          />
+          <button onClick={() => manual && lookup(manual)} className="px-5 py-3 rounded-2xl font-bold"
+            style={{ background: "var(--accent)", color: "#fff", fontSize: 14 }}>
+            OK
+          </button>
+        </div>
+      )}
+
+      {/* Bottom panel */}
+      <div className="rounded-t-3xl p-5 flex flex-col gap-4" style={{ background: "var(--surface)", minHeight: rapidMode ? 80 : 240 }}>
+        <PhaseFeedback phase={phase} isbn={isbn} result={result} status={status} bookType={bookType}
+          onStatusChange={setStatus} onTypeChange={setBookType}
+          onConfirm={() => result && addBook(result, status, bookType)}
+          onReset={reset} />
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ScanFrame({ active }: { active: boolean }) {
+  const corners = [
+    { top: -2, left: -2,  borderTop: "3px solid #5B7AFF", borderLeft:  "3px solid #5B7AFF", borderRadius: "6px 0 0 0" },
+    { top: -2, right: -2, borderTop: "3px solid #5B7AFF", borderRight: "3px solid #5B7AFF", borderRadius: "0 6px 0 0" },
+    { bottom: -2, left: -2,  borderBottom: "3px solid #5B7AFF", borderLeft:  "3px solid #5B7AFF", borderRadius: "0 0 0 6px" },
+    { bottom: -2, right: -2, borderBottom: "3px solid #5B7AFF", borderRight: "3px solid #5B7AFF", borderRadius: "0 0 6px 0" },
+  ];
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {corners.map((s, i) => <div key={i} className="absolute" style={{ width: 20, height: 20, ...s }} />)}
+      {active && (
+        <div className="scan-line absolute left-0 right-0"
+          style={{ height: 2, background: "linear-gradient(90deg,transparent,#5B7AFF,transparent)" }} />
+      )}
+    </div>
+  );
+}
+
+function PhaseFeedback({ phase, isbn, result, status, bookType, onStatusChange, onTypeChange, onConfirm, onReset }: {
+  phase: Phase; isbn: string; result: ScanResult | null;
+  status: ReadStatus; bookType: BookType;
+  onStatusChange: (s: ReadStatus) => void;
+  onTypeChange: (t: BookType) => void;
+  onConfirm: () => void; onReset: () => void;
+}) {
+  if (phase === "scanning") return (
+    <p className="text-center py-4" style={{ fontSize: 14, color: "var(--txt2)" }}>
+      Centrez le code-barres dans le cadre
+    </p>
+  );
+
+  if (phase === "loading") return (
+    <div className="flex items-center justify-center gap-3 py-4">
+      <div className="w-6 h-6 rounded-full border-2 animate-spin"
+        style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+      <p style={{ fontSize: 14, color: "var(--txt2)" }}>Recherche de {isbn}…</p>
+    </div>
+  );
+
+  if (phase === "not_found" || phase === "error") return (
+    <div className="flex flex-col items-center gap-3 py-2">
+      <p className="font-semibold" style={{ fontSize: 15, color: phase === "error" ? "var(--miss-t)" : "var(--txt1)" }}>
+        {phase === "error" ? "Erreur de connexion" : `Introuvable — ${isbn}`}
+      </p>
+      <Button onClick={onReset}><RefreshCw className="w-4 h-4" /> Réessayer</Button>
+    </div>
+  );
+
+  if (phase === "confirm" && result) return (
+    <>
+      {/* Collection notification */}
+      {result.collection && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{ background: result.isNewCollection ? "var(--accent-l)" : "var(--have-bg)", border: `1px solid ${result.isNewCollection ? "var(--border)" : "var(--have-b)"}` }}>
+          {result.isNewCollection
+            ? <Plus className="w-4 h-4 flex-shrink-0" style={{ color: "var(--accent)" }} />
+            : <Check className="w-4 h-4 flex-shrink-0" style={{ color: "var(--have-t)" }} />}
+          <p style={{ fontSize: 13, fontWeight: 600, color: result.isNewCollection ? "var(--accent)" : "var(--have-t)" }}>
+            {result.isNewCollection
+              ? `Collection « ${result.collection.name} » créée`
+              : `Tome ${result.book.series_index} → ${result.collection.name}`}
+          </p>
+        </div>
+      )}
+
+      {/* Book preview */}
+      <div className="flex gap-3 p-3 rounded-2xl" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+        <Cover src={result.book.cover_url} alt={result.book.title} width={52} height={72} className="rounded-xl flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-bold" style={{ fontSize: 15, color: "var(--txt1)", lineHeight: 1.3 }}>{result.book.title}</p>
+          <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>{result.book.authors.join(", ")}</p>
+          {result.book.series_name && (
+            <p style={{ fontSize: 12, color: "var(--accent)", marginTop: 2 }}>
+              {result.book.series_name} #{result.book.series_index}
+            </p>
           )}
         </div>
       </div>
 
-      {showManual && (
-        <div className="flex gap-2 px-5 mt-3">
-          <input type="text" value={manualISBN} onChange={e => setManualISBN(e.target.value)}
-            placeholder="Saisir ISBN manuellement..."
-            className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-            style={{ background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(91,122,255,0.3)" }}
-            onKeyDown={e => e.key === "Enter" && manualISBN && lookup(manualISBN)} />
-          <button onClick={() => manualISBN && lookup(manualISBN)} className="px-4 py-2 rounded-xl text-sm font-bold" style={{ background: "var(--accent)", color: "#fff" }}>OK</button>
-        </div>
-      )}
-
-      <div className="flex-1 rounded-t-3xl mt-4 overflow-y-auto p-5 flex flex-col gap-4" style={{ background: "var(--surface)" }}>
-
-        {phase === "scanning" && (
-          <div className="flex flex-col items-center gap-2 py-6">
-            <p className="font-semibold" style={{ color: "var(--txt1)" }}>Centrez le code-barres</p>
-            <p className="text-sm" style={{ color: "var(--txt3)" }}>ISBN 10 ou 13 — détection automatique</p>
-            <p className="text-xs mt-2" style={{ color: "var(--txt3)" }}>Si une BD appartient à une série, la collection sera créée automatiquement</p>
-          </div>
-        )}
-
-        {phase === "loading" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
-            <p className="text-sm" style={{ color: "var(--txt2)" }}>Recherche de {isbn}…</p>
-          </div>
-        )}
-
-        {phase === "not_found" && (
-          <div className="flex flex-col items-center gap-4 py-6">
-            <p className="font-semibold" style={{ color: "var(--txt1)" }}>{isbn} introuvable</p>
-            <p className="text-sm text-center" style={{ color: "var(--txt2)" }}>Non référencé dans Open Library ni Google Books.</p>
-            <button onClick={reset} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm" style={{ background: "var(--accent)", color: "#fff" }}>
-              <RefreshCw className="w-4 h-4" /> Réessayer
-            </button>
-          </div>
-        )}
-
-        {phase === "error" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <p className="font-semibold" style={{ color: "var(--miss-t)" }}>Erreur de connexion</p>
-            <button onClick={reset} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm" style={{ background: "var(--accent)", color: "#fff" }}>
-              <RefreshCw className="w-4 h-4" /> Réessayer
-            </button>
-          </div>
-        )}
-
-        {phase === "confirm" && scanResult && (
-          <>
-            {scanResult.collection && (
-              <div className="rounded-2xl p-3 flex gap-3 items-start"
-                style={{ background: scanResult.isNewCollection ? "var(--accent-l)" : "var(--surface2)", border: `1px solid ${scanResult.isNewCollection ? "var(--accent)" : "var(--border)"}` }}>
-                {scanResult.collection.cover_url && (
-                  <div className="w-10 h-14 rounded-lg overflow-hidden flex-shrink-0" style={{ background: "var(--placeholder)" }}>
-                    <img src={scanResult.collection.cover_url} alt="" className="w-full h-full object-cover" />
-                  </div>
-                )}
-                <div className="flex-1">
-                  {scanResult.isNewCollection ? (
-                    <>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Plus className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
-                        <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>Collection créée automatiquement</span>
-                      </div>
-                      <p className="text-sm font-bold" style={{ color: "var(--txt1)" }}>{scanResult.collection.name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--txt2)" }}>Tome {scanResult.book.series_index} · {scanResult.collection.book_type}</p>
-                    </>
-                  ) : scanResult.isNewVolume ? (
-                    <>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Check className="w-3.5 h-3.5" style={{ color: "var(--have-t)" }} />
-                        <span className="text-xs font-bold" style={{ color: "var(--have-t)" }}>Tome manquant trouvé !</span>
-                      </div>
-                      <p className="text-sm font-bold" style={{ color: "var(--txt1)" }}>{scanResult.collection.name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--txt2)" }}>
-                        Tome {scanResult.book.series_index} · {scanResult.collection.owned_volumes.length}/{scanResult.collection.total_volumes ?? "?"} possédés
-                      </p>
-                      {scanResult.collection.total_volumes && scanResult.collection.total_volumes <= 20 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {Array.from({ length: scanResult.collection.total_volumes }, (_, i) => i + 1).map(n => {
-                            const isNew = n === scanResult.book.series_index;
-                            const have = scanResult.collection!.owned_volumes.includes(n);
-                            return (
-                              <div key={n} style={{ width: 20, height: 20, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700,
-                                ...(isNew ? { background: "var(--accent)", color: "#fff" } : have ? { background: "var(--have-bg)", color: "var(--have-t)", border: "1px solid var(--have-b)" } : { background: "var(--miss-bg)", color: "var(--miss-t)", border: "1px dashed var(--miss-b)" }) }}>
-                                {n}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm" style={{ color: "var(--txt2)" }}>Ce tome est déjà dans votre collection.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 p-3 rounded-2xl" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-              <div className="w-14 h-20 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center shadow" style={{ background: "var(--placeholder)" }}>
-                {scanResult.book.cover_url ? <img src={scanResult.book.cover_url} alt="" className="w-full h-full object-cover" /> : <BookOpen className="w-6 h-6" style={{ color: "var(--txt3)" }} />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm leading-tight" style={{ color: "var(--txt1)" }}>{scanResult.book.title}</p>
-                <p className="text-xs mt-1" style={{ color: "var(--txt2)" }}>{scanResult.book.authors.join(", ")}</p>
-                {scanResult.book.series_name && <p className="text-xs mt-1 font-semibold" style={{ color: "var(--accent)" }}>{scanResult.book.series_name} #{scanResult.book.series_index}</p>}
-                <p className="text-xs mt-0.5 font-mono" style={{ color: "var(--txt3)" }}>ISBN {scanResult.book.isbn}</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--txt3)" }}>Type</label>
-              <div className="flex gap-2 mt-1.5">
-                {(["livre","bd","manga"] as BookType[]).map(t => (
-                  <button key={t} onClick={() => setBookType(t)} className="flex-1 py-2 rounded-xl text-sm font-semibold"
-                    style={{ background: bookType === t ? "var(--accent)" : "var(--surface2)", color: bookType === t ? "#fff" : "var(--txt2)", border: `1px solid ${bookType === t ? "var(--accent)" : "var(--border)"}` }}>
-                    {t === "livre" ? "📖 Livre" : t === "bd" ? "🎨 BD" : "⛩️ Manga"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--txt3)" }}>Statut</label>
-              <div className="flex gap-2 mt-1.5">
-                {(["a_lire","en_cours","lu"] as ReadStatus[]).map(s => (
-                  <button key={s} onClick={() => setStatus(s)} className="flex-1 py-2 rounded-xl text-xs font-semibold"
-                    style={{ background: status === s ? "var(--accent)" : "var(--surface2)", color: status === s ? "#fff" : "var(--txt2)", border: `1px solid ${status === s ? "var(--accent)" : "var(--border)"}` }}>
-                    {s === "a_lire" ? "📌 À lire" : s === "en_cours" ? "📖 En cours" : "✅ Lu"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={() => onSuccess(scanResult, status, bookType)}
-              className="w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-95"
-              style={{ background: "var(--accent)", color: "#fff" }}>
-              <Check className="w-5 h-5" /> Ajouter à ma bibliothèque
-            </button>
-          </>
-        )}
+      {/* Type */}
+      <div className="flex gap-2">
+        {(Object.entries(TYPE_CONFIG) as [BookType, { label: string; emoji: string }][]).map(([v, { emoji, label }]) => (
+          <button key={v} onClick={() => onTypeChange(v)}
+            className="flex-1 py-2.5 rounded-xl font-semibold"
+            style={{ fontSize: 13, background: bookType === v ? "var(--accent)" : "var(--surface2)", color: bookType === v ? "#fff" : "var(--txt2)", border: `1px solid ${bookType === v ? "var(--accent)" : "var(--border)"}` }}>
+            {emoji} {label}
+          </button>
+        ))}
       </div>
-    </div>
+
+      {/* Status */}
+      <div className="flex gap-2">
+        {(Object.entries(STATUS_CONFIG) as [ReadStatus, { emoji: string; label: string }][]).map(([v, { emoji, label }]) => (
+          <button key={v} onClick={() => onStatusChange(v)}
+            className="flex-1 py-2.5 rounded-xl font-semibold"
+            style={{ fontSize: 13, background: status === v ? "var(--accent)" : "var(--surface2)", color: status === v ? "#fff" : "var(--txt2)", border: `1px solid ${status === v ? "var(--accent)" : "var(--border)"}` }}>
+            {emoji} {label}
+          </button>
+        ))}
+      </div>
+
+      <Button onClick={onConfirm} className="w-full py-4 rounded-2xl" style={{ fontSize: 15 }}>
+        <Check className="w-5 h-5" /> Ajouter à ma bibliothèque
+      </Button>
+    </>
   );
+
+  return null;
 }

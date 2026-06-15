@@ -1,3 +1,5 @@
+// ─── Core types ───────────────────────────────────────────────────────────────
+
 export type ReadStatus = "lu" | "en_cours" | "a_lire";
 export type BookType   = "livre" | "bd" | "manga";
 
@@ -13,7 +15,7 @@ export interface Book {
   description?: string;
   book_type: BookType;
   status: ReadStatus;
-  rating?: number;
+  rating?: number;       // 1–5
   note?: string;
   series_name?: string;
   series_index?: number;
@@ -66,6 +68,8 @@ export interface SharedLibrary {
   claimed_count: number;
   cover_url?: string;
 }
+
+// ─── API response ─────────────────────────────────────────────────────────────
 
 export interface LookupResult {
   isbn: string;

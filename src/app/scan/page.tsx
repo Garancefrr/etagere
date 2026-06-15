@@ -1,115 +1,132 @@
 "use client";
-import { useState } from "react";
-import dynamic from "next/dynamic";
+import { useState, useCallback } from "react";
 import { ScanResult, ReadStatus, BookType } from "@/types";
 import BottomNav from "@/components/layout/BottomNav";
-import { ScanLine, CheckCircle } from "lucide-react";
-
-const Scanner = dynamic(() => import("@/components/scanner/Scanner"), { ssr: false });
+import Scanner from "@/components/scanner/Scanner";
+import { ToastStack } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
+import { useFirstUse } from "@/hooks/useFirstUse";
+import { ScanLine, Zap, Settings2 } from "lucide-react";
 
 export default function ScanPage() {
-  const [scanning, setScanning] = useState(false);
-  const [lastAdded, setLastAdded] = useState<{ title: string; isNewCollection: boolean; collectionName?: string } | null>(null);
+  const [scanning,  setScanning]  = useState(false);
+  const [rapidMode, setRapidMode] = useState(false);
+  const isFirstUse = useFirstUse("folio_scan_seen");
+  const { toasts, push, dismiss } = useToast();
 
-  const handleSuccess = async (result: ScanResult, status: ReadStatus, bookType: BookType) => {
-    // Save book
-    await fetch("/api/books/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        isbn: result.book.isbn,
-        title: result.book.title,
-        authors: result.book.authors,
-        cover_url: result.book.cover_url,
-        publisher: result.book.publisher,
-        published_year: result.book.published_year,
-        page_count: result.book.page_count,
-        description: result.book.description,
-        book_type: bookType,
-        status,
-        series_name: result.book.series_name,
-        series_index: result.book.series_index,
-        collection_id: result.collection?.id,
-        library_id: "lib1",
-        added_by: "user1",
-      }),
-    });
-
-    if (result.isNewCollection && result.collection) {
-      sessionStorage.setItem("new_collection", result.collection.name);
+  const handleSuccess = useCallback((result: ScanResult) => {
+    if (rapidMode) {
+      push(result.book.title, result.isNewCollection ? `Collection « ${result.collection?.name} » créée` : undefined);
+    } else {
+      setScanning(false);
+      push("Ajouté !", result.book.title);
     }
+  }, [rapidMode, push]);
 
-    setScanning(false);
-    setLastAdded({
-      title: result.book.title,
-      isNewCollection: result.isNewCollection,
-      collectionName: result.collection?.name,
-    });
-    setTimeout(() => setLastAdded(null), 4000);
-  };
+  // Avoid hydration flash from localStorage
+  if (isFirstUse === null) return null;
 
   return (
     <>
-      <div className="min-h-screen flex flex-col items-center justify-center px-5 pb-24" style={{ background: "var(--bg)" }}>
-        <div className="absolute top-0 left-0 right-0 px-4 pt-10 pb-3">
-          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Ajouter un ouvrage</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--txt1)" }}>Scanner</h1>
+      <div className="flex flex-col min-h-screen pb-24" style={{ background: "var(--bg)" }}>
+        <div className="px-4 pt-12 pb-4">
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            Ajouter
+          </p>
+          <h1 className="font-bold" style={{ fontSize: 26, color: "var(--txt1)" }}>Scanner</h1>
         </div>
 
-        {!lastAdded ? (
-          <div className="flex flex-col items-center gap-8 mt-16">
-            <button onClick={() => setScanning(true)}
-              className="w-36 h-36 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all active:scale-90"
-              style={{ background: "var(--accent)", boxShadow: "0 8px 32px rgba(59,91,255,0.35)" }}>
-              <ScanLine className="w-12 h-12 text-white" />
-              <span className="text-sm font-bold text-white">Scanner</span>
+        {/* Mode toggle */}
+        <div className="mx-4 mb-6 flex p-1 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          {MODES.map(({ key, icon: Icon, label, sub }) => (
+            <button
+              key={String(key)}
+              onClick={() => setRapidMode(key)}
+              className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl transition-all"
+              style={{ background: rapidMode === key ? "var(--accent)" : "transparent" }}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" style={{ color: rapidMode === key ? "#fff" : "var(--txt3)" }} />
+              <div className="text-left">
+                <p className="font-bold" style={{ fontSize: 13, color: rapidMode === key ? "#fff" : "var(--txt1)" }}>{label}</p>
+                <p style={{ fontSize: 11, color: rapidMode === key ? "rgba(255,255,255,0.7)" : "var(--txt3)" }}>{sub}</p>
+              </div>
             </button>
-            <div className="text-center">
-              <p className="font-semibold" style={{ color: "var(--txt1)" }}>Scannez le code-barres</p>
-              <p className="text-sm mt-1" style={{ color: "var(--txt3)" }}>ISBN au dos du livre ou de la BD</p>
-            </div>
-            <div className="w-full max-w-xs space-y-2">
-              {[
-                { step: "1", text: "Pointez la caméra vers le code-barres" },
-                { step: "2", text: "La détection est automatique" },
-                { step: "3", text: "Si c'est une BD, la collection se crée seule" },
-              ].map(s => (
-                <div key={s.step} className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white"
-                    style={{ background: "var(--accent)" }}>{s.step}</span>
-                  <span className="text-sm" style={{ color: "var(--txt2)" }}>{s.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-6 mt-16">
-            <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: "var(--have-bg)" }}>
-              <CheckCircle className="w-10 h-10" style={{ color: "var(--have-t)" }} />
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold" style={{ color: "var(--txt1)" }}>Ajouté !</p>
-              <p className="text-sm mt-1 italic" style={{ color: "var(--txt2)" }}>{lastAdded.title}</p>
-              {lastAdded.isNewCollection && lastAdded.collectionName && (
-                <p className="text-sm mt-2 font-semibold" style={{ color: "var(--accent)" }}>
-                  + Collection « {lastAdded.collectionName} » créée
-                </p>
-              )}
-            </div>
-            <button onClick={() => setScanning(true)}
-              className="px-6 py-3 rounded-2xl font-bold text-sm text-white"
-              style={{ background: "var(--accent)" }}>
-              Scanner un autre livre
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
+
+        {/* CTA */}
+        {isFirstUse ? <FirstUseInstructions onStart={() => setScanning(true)} /> : <ScanButton rapidMode={rapidMode} onStart={() => setScanning(true)} />}
       </div>
 
       {scanning && (
-        <Scanner onSuccess={handleSuccess} onClose={() => setScanning(false)} />
+        <Scanner rapidMode={rapidMode} onSuccess={handleSuccess} onClose={() => setScanning(false)} />
       )}
+
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
       <BottomNav />
     </>
+  );
+}
+
+// ── Static data ───────────────────────────────────────────────────────────────
+
+const MODES = [
+  { key: false, icon: Settings2, label: "Mode classique", sub: "Confirmation avant ajout" },
+  { key: true,  icon: Zap,       label: "Mode rapide",    sub: "Ajout instantané en série" },
+] as const;
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ScanButton({ rapidMode, onStart }: { rapidMode: boolean; onStart: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-4 px-5">
+      <button onClick={onStart}
+        className="w-full py-5 rounded-3xl flex items-center justify-center gap-3 active:scale-95"
+        style={{ background: "var(--accent)", boxShadow: "0 8px 32px rgba(59,91,255,0.35)" }}>
+        <ScanLine className="w-7 h-7 text-white" />
+        <span className="font-bold text-white" style={{ fontSize: 17 }}>
+          {rapidMode ? "Lancer le mode rapide" : "Ouvrir le scanner"}
+        </span>
+      </button>
+      <p className="text-center" style={{ fontSize: 13, color: "var(--txt3)" }}>
+        {rapidMode ? "Chaque scan est ajouté immédiatement" : "ISBN détecté automatiquement par la caméra"}
+      </p>
+    </div>
+  );
+}
+
+function FirstUseInstructions({ onStart }: { onStart: () => void }) {
+  const STEPS = [
+    "Pointez la caméra vers le code-barres",
+    "La détection est automatique",
+    "Les BD créent leur collection automatiquement",
+  ];
+  return (
+    <div className="flex flex-col items-center gap-6 px-5">
+      <button onClick={onStart}
+        className="w-32 h-32 rounded-3xl flex flex-col items-center justify-center gap-2 active:scale-95"
+        style={{ background: "var(--accent)", boxShadow: "0 8px 32px rgba(59,91,255,0.35)" }}>
+        <ScanLine className="w-12 h-12 text-white" />
+        <span className="font-bold text-white text-sm">Scanner</span>
+      </button>
+
+      <div className="text-center">
+        <p className="font-bold" style={{ fontSize: 17, color: "var(--txt1)" }}>Scannez le code-barres</p>
+        <p style={{ fontSize: 14, color: "var(--txt3)", marginTop: 4 }}>ISBN au dos du livre ou de la BD</p>
+      </div>
+
+      <div className="w-full space-y-2">
+        {STEPS.map((text, i) => (
+          <div key={i} className="flex items-center gap-3 p-4 rounded-2xl"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <span className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-white flex-shrink-0"
+              style={{ background: "var(--accent)", fontSize: 13 }}>
+              {i + 1}
+            </span>
+            <span style={{ fontSize: 14, color: "var(--txt2)" }}>{text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

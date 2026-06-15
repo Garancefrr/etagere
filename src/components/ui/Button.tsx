@@ -7,11 +7,12 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS = {
-  primary:   { background: "var(--accent)",   color: "#fff",          border: "none" },
-  secondary: { background: "var(--surface2)", color: "var(--txt1)",   border: "1px solid var(--border)" },
-  ghost:     { background: "transparent",     color: "var(--txt2)",   border: "1px solid var(--border)" },
-  danger:    { background: "var(--miss-bg)",  color: "var(--miss-t)", border: "1px solid var(--miss-b)" },
+  primary:   { background: "var(--accent)",   color: "#fff",            border: "none" },
+  secondary: { background: "var(--surface2)", color: "var(--txt1)",     border: "1px solid var(--border)" },
+  ghost:     { background: "transparent",     color: "var(--txt2)",     border: "1px solid var(--border)" },
+  danger:    { background: "var(--miss-bg)",  color: "var(--miss-t)",   border: "1px solid var(--miss-b)" },
 };
+
 const SIZES = {
   sm: { padding: "6px 12px",  borderRadius: 10, fontSize: 12 },
   md: { padding: "10px 16px", borderRadius: 14, fontSize: 14 },

@@ -9,7 +9,6 @@ const DEMO: Wishlist = {
   collection_id: "col_1",
   collection_name: "Astérix",
   owner_name: "Garance",
-  owner_id: "lib1",
   missing_items: [
     { id: "wi_1", title: "Astérix le Gaulois — Tome 6", authors: ["Goscinny & Uderzo"], series_index: 6, cover_url: "https://covers.openlibrary.org/b/isbn/9782205055375-M.jpg" },
     { id: "wi_2", title: "Astérix le Gaulois — Tome 7", authors: ["Goscinny & Uderzo"], series_index: 7 },

@@ -12,5 +12,5 @@ export const STATUS_CONFIG: Record<ReadStatus, { label: string; emoji: string; b
 export const TYPE_CONFIG: Record<BookType, { label: string; emoji: string }> = {
   livre: { label: "Livre", emoji: "📖" },
   bd:    { label: "BD",    emoji: "🎨" },
-  manga: { label: "Manga", emoji: "⛩️"  },
+  manga: { label: "Manga", emoji: "⛩️" },
 };
