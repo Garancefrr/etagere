@@ -1,6 +1,6 @@
 {
-  "name": "Étagère — Ma Bibliothèque",
-  "short_name": "Étagère",
+  "name": "Folio — Ma Bibliothèque",
+  "short_name": "Folio",
   "description": "Scannez et gérez vos livres, BDs et mangas",
   "start_url": "/library",
   "display": "standalone",

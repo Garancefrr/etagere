@@ -13,7 +13,7 @@ export default function LoginPage() {
             style={{ background: "var(--accent)", boxShadow: "0 4px 20px rgba(59,91,255,0.35)" }}>
             <BookOpen className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold" style={{ color: "var(--txt1)" }}>Étagère</h1>
+          <h1 className="text-4xl font-bold" ...>Folio</h1>
           <p className="text-sm text-center" style={{ color: "var(--txt2)" }}>
             Votre bibliothèque partagée, toujours avec vous.
           </p>

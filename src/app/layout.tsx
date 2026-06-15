@@ -3,8 +3,8 @@ import "./globals.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  title: "Étagère",
-  description: "Votre bibliothèque personnelle — scannez, collectionnez, partagez.",
+  title: "Folio",
+  description: "Votre bibliothèque personnelle, toujours avec vous.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Étagère" },
 };
