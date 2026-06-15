@@ -1,5 +1,5 @@
 export type ReadStatus = "lu" | "en_cours" | "a_lire";
-export type BookType = "livre" | "bd" | "manga";
+export type BookType   = "livre" | "bd" | "manga";
 
 export interface Book {
   id: string;
@@ -18,10 +18,10 @@ export interface Book {
   series_name?: string;
   series_index?: number;
   collection_id?: string;
+  library_id: string;
   added_by: string;
   added_at: string;
   updated_at: string;
-  library_id: string;
 }
 
 export interface Collection {
@@ -37,18 +37,34 @@ export interface Collection {
   updated_at: string;
 }
 
-export interface Library {
+export interface WishlistItem {
   id: string;
-  name: string;
-  owner_id: string;
+  title: string;
+  authors: string[];
+  cover_url?: string;
+  series_index?: number;
+  isbn?: string;
+  claimed_by_name?: string;
+  claimed_at?: string;
+}
+
+export interface Wishlist {
+  id: string;
+  collection_id: string;
+  collection_name: string;
+  owner_name: string;
+  missing_items: WishlistItem[];
   created_at: string;
 }
 
-export interface LibraryMember {
-  library_id: string;
-  user_id: string;
-  role: "owner" | "member";
-  joined_at: string;
+export interface SharedLibrary {
+  wishlist_id: string;
+  collection_name: string;
+  owner_name: string;
+  shared_at: string;
+  missing_count: number;
+  claimed_count: number;
+  cover_url?: string;
 }
 
 export interface LookupResult {
@@ -70,37 +86,4 @@ export interface ScanResult {
   collection?: Collection;
   isNewCollection: boolean;
   isNewVolume: boolean;
-}
-
-export interface SharedLibrary {
-  wishlist_id: string;
-  collection_name: string;
-  owner_name: string;
-  shared_at: string;
-  missing_count: number;
-  claimed_count: number;
-  cover_url?: string;
-}
-
-export interface WishlistItem {
-  id: string;
-  title: string;
-  authors: string[];
-  cover_url?: string;
-  series_index?: number;
-  isbn?: string;
-  claimed_by?: string;
-  claimed_by_name?: string;
-  claimed_at?: string;
-}
-
-export interface Wishlist {
-  id: string;
-  collection_id: string;
-  collection_name: string;
-  owner_name: string;
-  owner_id: string;
-  missing_items: WishlistItem[];
-  created_at: string;
-  expires_at?: string;
 }
