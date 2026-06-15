@@ -71,3 +71,13 @@ export interface ScanResult {
   isNewCollection: boolean;
   isNewVolume: boolean;
 }
+
+export interface SharedLibrary {
+  wishlist_id: string;
+  collection_name: string;
+  owner_name: string;
+  shared_at: string;
+  missing_count: number;
+  claimed_count: number;
+  cover_url?: string;
+}
