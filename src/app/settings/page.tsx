@@ -1,27 +1,27 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import BottomNav from "@/components/layout/BottomNav";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { Toggle } from "@/components/ui/Toggle";
 import { Cover } from "@/components/ui/Cover";
 import { SharedWithMe } from "@/lib/db";
-import { Home, UserPlus, Bell, Download, LogOut, ChevronRight, Gift, BookOpen } from "lucide-react";
+import { Moon, LogOut, ChevronRight, Gift, BookOpen } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
   const { theme, toggle } = useTheme();
-  const [shared,  setShared]  = useState<SharedWithMe[]>([]);
+  const [shared, setShared] = useState<SharedWithMe[]>([]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
     fetch(`/api/shared-with-me?viewer_id=${session.user.id}`)
       .then(r => r.json())
-      .then(setShared)
+      .then(d => Array.isArray(d) ? setShared(d) : [])
       .catch(() => {});
   }, [session]);
 
-  const userName = session?.user?.name?.split(" ")[0] ?? "Compte";
+  const userName = session?.user?.name ?? "Utilisateur";
 
   return (
     <div className="min-h-screen pb-24" style={{ background: "var(--bg)" }}>
@@ -33,17 +33,25 @@ export default function SettingsPage() {
       {/* Profile */}
       <div className="mx-4 mb-4 p-4 rounded-2xl flex items-center gap-3" style={{ background: "var(--accent)" }}>
         {session?.user?.image
-          ? <img src={session.user.image} alt="" className="w-14 h-14 rounded-2xl flex-shrink-0" />
+          ? <img src={session.user.image} alt="" className="w-14 h-14 rounded-2xl flex-shrink-0 object-cover" />
           : <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold flex-shrink-0"
-              style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 20 }}>{userName[0]}</div>}
-        <div>
-          <p className="font-bold text-white" style={{ fontSize: 17 }}>{session?.user?.name ?? "Utilisateur"}</p>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{session?.user?.email}</p>
+              style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 20 }}>
+              {userName[0]}
+            </div>}
+        <div className="min-w-0">
+          <p className="font-bold text-white truncate" style={{ fontSize: 17 }}>{userName}</p>
+          <p className="truncate" style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{session?.user?.email}</p>
         </div>
       </div>
 
-      {/* Shared with me */}
-      <SettingGroup label="Bibliothèques partagées" icon={Gift}>
+      {/* Bibliothèques partagées */}
+      <div className="mx-4 mb-3 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+        <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border)" }}>
+          <Gift className="w-4 h-4" style={{ color: "var(--accent)" }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            Bibliothèques partagées
+          </span>
+        </div>
         {shared.length === 0 ? (
           <div className="px-4 py-6 flex flex-col items-center gap-2">
             <BookOpen className="w-8 h-8" style={{ color: "var(--txt3)", opacity: 0.3 }} />
@@ -57,7 +65,7 @@ export default function SettingsPage() {
             style={{ borderTop: "1px solid var(--border)", textDecoration: "none" }}>
             <Cover src={lib.cover_url} alt={lib.collection_name} width={44} height={60} className="rounded-xl flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="font-semibold" style={{ fontSize: 15, color: "var(--txt1)" }}>
+              <p className="font-semibold truncate" style={{ fontSize: 15, color: "var(--txt1)" }}>
                 {lib.collection_name}{" "}
                 <span style={{ fontWeight: 400, opacity: 0.5 }}>de {lib.owner_name}</span>
               </p>
@@ -68,33 +76,29 @@ export default function SettingsPage() {
             <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--txt3)" }} />
           </a>
         ))}
-      </SettingGroup>
+      </div>
 
-      {/* Library */}
-      <SettingGroup label="Ma bibliothèque" icon={Home}>
-        <SettingRow icon={Home} label="Folio" sub="Ma bibliothèque personnelle">
-          <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
-        </SettingRow>
-        <SettingRow icon={UserPlus} label="Inviter quelqu'un" sub="Partage une collection depuis l'onglet Collections">
-          <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
-        </SettingRow>
-      </SettingGroup>
-
-      {/* Preferences */}
-      <SettingGroup label="Préférences" icon={Bell}>
-        <SettingRow icon={Bell} label="Mode sombre" sub={"Thème de l'interface"}>
+      {/* Préférences */}
+      <div className="mx-4 mb-3 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+        <div className="px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            Préférences
+          </span>
+        </div>
+        <div className="flex items-center gap-3 px-4 py-4">
+          <Moon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--txt3)" }} />
+          <div className="flex-1">
+            <p style={{ fontSize: 15, fontWeight: 500, color: "var(--txt1)" }}>Mode sombre</p>
+            <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>{"Thème de l'interface"}</p>
+          </div>
           <Toggle checked={theme === "dark"} onChange={() => toggle()} label="Basculer mode sombre" />
-        </SettingRow>
-        <SettingRow icon={Bell} label="Notifications" sub="Nouvelles collections partagées">
-          <span style={{ fontSize: 13, color: "var(--txt3)" }}>Activées</span>
-        </SettingRow>
-        <SettingRow icon={Download} label="Exporter ma bibliothèque" sub="Format CSV ou JSON">
-          <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
-        </SettingRow>
-      </SettingGroup>
+        </div>
+      </div>
 
-      {/* Sign out */}
-      <button className="mx-4 py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95"
+      {/* Déconnexion */}
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="mx-4 py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95"
         style={{ width: "calc(100% - 2rem)", background: "var(--miss-bg)", border: "1px solid var(--miss-b)" }}>
         <LogOut className="w-5 h-5" style={{ color: "var(--miss-t)" }} />
         <span style={{ fontSize: 15, fontWeight: 700, color: "var(--miss-t)" }}>Se déconnecter</span>
@@ -102,39 +106,6 @@ export default function SettingsPage() {
 
       <p className="text-center mt-4" style={{ fontSize: 12, color: "var(--txt3)", opacity: 0.4 }}>Folio · v1.0.0</p>
       <BottomNav />
-    </div>
-  );
-}
-
-function SettingGroup({ label, icon: _Icon, children }: {
-  label: string;
-  icon: React.ComponentType<any>;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mx-4 mb-3 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
-      <div className="px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>{label}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function SettingRow({ icon: Icon, label, sub, children }: {
-  icon: React.ComponentType<any>;
-  label: string;
-  sub?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-4" style={{ borderTop: "1px solid var(--border)" }}>
-      <Icon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--txt3)" }} />
-      <div className="flex-1">
-        <p style={{ fontSize: 15, fontWeight: 500, color: "var(--txt1)" }}>{label}</p>
-        {sub && <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>{sub}</p>}
-      </div>
-      {children}
     </div>
   );
 }
