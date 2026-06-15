@@ -1,69 +1,68 @@
 "use client";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import BottomNav from "@/components/layout/BottomNav";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { Toggle } from "@/components/ui/Toggle";
 import { Cover } from "@/components/ui/Cover";
-import { SharedLibrary } from "@/types";
+import { SharedWithMe } from "@/lib/db";
 import { Home, UserPlus, Bell, Download, LogOut, ChevronRight, Gift, BookOpen } from "lucide-react";
 
-// ─── Demo data (replace with Supabase query) ─────────────────────────────────
-const SHARED: SharedLibrary[] = [
-  {
-    wishlist_id: "wl_demo", collection_name: "Astérix", owner_name: "Amaury",
-    shared_at: "2026-06-10T10:00:00Z", missing_count: 7, claimed_count: 1,
-    cover_url: "https://covers.openlibrary.org/b/isbn/9782205055375-M.jpg",
-  },
-];
-
 export default function SettingsPage() {
+  const { data: session } = useSession();
   const { theme, toggle } = useTheme();
+  const [shared,  setShared]  = useState<SharedWithMe[]>([]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    fetch(`/api/shared-with-me?viewer_id=${session.user.id}`)
+      .then(r => r.json())
+      .then(setShared)
+      .catch(() => {});
+  }, [session]);
+
+  const userName = session?.user?.name?.split(" ")[0] ?? "Compte";
 
   return (
     <div className="min-h-screen pb-24" style={{ background: "var(--bg)" }}>
       <div className="px-4 pt-12 pb-4">
-        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-          Compte
-        </p>
+        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Compte</p>
         <h1 className="font-bold" style={{ fontSize: 26, color: "var(--txt1)" }}>Réglages</h1>
       </div>
 
       {/* Profile */}
       <div className="mx-4 mb-4 p-4 rounded-2xl flex items-center gap-3" style={{ background: "var(--accent)" }}>
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 20 }}>
-          G
-        </div>
+        {session?.user?.image
+          ? <img src={session.user.image} alt="" className="w-14 h-14 rounded-2xl flex-shrink-0" />
+          : <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 20 }}>{userName[0]}</div>}
         <div>
-          <p className="font-bold text-white" style={{ fontSize: 17 }}>Garance</p>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>garancefrr@gmail.com</p>
+          <p className="font-bold text-white" style={{ fontSize: 17 }}>{session?.user?.name ?? "Utilisateur"}</p>
+          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{session?.user?.email}</p>
         </div>
       </div>
 
-      {/* Shared libraries */}
-      <SettingGroup icon={Gift} label="Bibliothèques partagées">
-        {SHARED.length === 0 ? (
+      {/* Shared with me */}
+      <SettingGroup label="Bibliothèques partagées" icon={Gift}>
+        {shared.length === 0 ? (
           <div className="px-4 py-6 flex flex-col items-center gap-2">
             <BookOpen className="w-8 h-8" style={{ color: "var(--txt3)", opacity: 0.3 }} />
             <p className="text-center" style={{ fontSize: 14, color: "var(--txt3)" }}>
-              Personne n&apos;a encore partagé de wishlist avec toi
+              Personne n&apos;a encore partagé de collection avec toi
             </p>
           </div>
-        ) : SHARED.map(lib => (
-          <a key={lib.wishlist_id} href={`/wishlist/${lib.wishlist_id}`}
+        ) : shared.map(lib => (
+          <a key={lib.token} href={`/share/${lib.token}`}
             className="flex items-center gap-3 px-4 py-3.5 active:opacity-70"
             style={{ borderTop: "1px solid var(--border)", textDecoration: "none" }}>
             <Cover src={lib.cover_url} alt={lib.collection_name} width={44} height={60} className="rounded-xl flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-semibold" style={{ fontSize: 15, color: "var(--txt1)" }}>
-                {lib.collection_name} <span style={{ fontWeight: 400, opacity: 0.5 }}>de {lib.owner_name}</span>
+                {lib.collection_name}{" "}
+                <span style={{ fontWeight: 400, opacity: 0.5 }}>de {lib.owner_name}</span>
               </p>
               <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>
-                {lib.missing_count} souhaité{lib.missing_count > 1 ? "s" : ""}
-                {lib.claimed_count > 0 && (
-                  <span style={{ color: "var(--have-t)", marginLeft: 6 }}>
-                    · {lib.claimed_count} réservé{lib.claimed_count > 1 ? "s" : ""}
-                  </span>
-                )}
+                {lib.owned_volumes.length}{lib.total_volumes ? `/${lib.total_volumes}` : ""} tomes
               </p>
             </div>
             <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--txt3)" }} />
@@ -71,18 +70,22 @@ export default function SettingsPage() {
         ))}
       </SettingGroup>
 
-      {/* My library */}
-      <SettingGroup icon={Home} label="Ma bibliothèque">
-        <SettingRow icon={Home} label="Folio — Bibliothèque" sub="1 membre · Propriétaire"><ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} /></SettingRow>
-        <SettingRow icon={UserPlus} label="Inviter un membre" sub="Partager par lien ou email"><ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} /></SettingRow>
+      {/* Library */}
+      <SettingGroup label="Ma bibliothèque" icon={Home}>
+        <SettingRow icon={Home} label="Folio" sub="Ma bibliothèque personnelle">
+          <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
+        </SettingRow>
+        <SettingRow icon={UserPlus} label="Inviter quelqu'un" sub="Partage une collection depuis l'onglet Collections">
+          <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
+        </SettingRow>
       </SettingGroup>
 
       {/* Preferences */}
-      <SettingGroup icon={Bell} label="Préférences">
+      <SettingGroup label="Préférences" icon={Bell}>
         <SettingRow icon={Bell} label="Mode sombre" sub={"Thème de l'interface"}>
           <Toggle checked={theme === "dark"} onChange={() => toggle()} label="Basculer mode sombre" />
         </SettingRow>
-        <SettingRow icon={Bell} label="Notifications" sub="Nouvelles wishlists partagées">
+        <SettingRow icon={Bell} label="Notifications" sub="Nouvelles collections partagées">
           <span style={{ fontSize: 13, color: "var(--txt3)" }}>Activées</span>
         </SettingRow>
         <SettingRow icon={Download} label="Exporter ma bibliothèque" sub="Format CSV ou JSON">
@@ -98,25 +101,20 @@ export default function SettingsPage() {
       </button>
 
       <p className="text-center mt-4" style={{ fontSize: 12, color: "var(--txt3)", opacity: 0.4 }}>Folio · v1.0.0</p>
-
       <BottomNav />
     </div>
   );
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
-
-function SettingGroup({ icon: _Icon, label, children }: {
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+function SettingGroup({ label, icon: _Icon, children }: {
   label: string;
+  icon: React.ComponentType<any>;
   children: React.ReactNode;
 }) {
   return (
     <div className="mx-4 mb-3 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
       <div className="px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-          {label}
-        </span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>{label}</span>
       </div>
       {children}
     </div>
@@ -124,7 +122,7 @@ function SettingGroup({ icon: _Icon, label, children }: {
 }
 
 function SettingRow({ icon: Icon, label, sub, children }: {
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<any>;
   label: string;
   sub?: string;
   children?: React.ReactNode;
