@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔧 Fix scanner — caméra toujours active..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -255,3 +260,9 @@ export default function Scanner({ rapidMode, onSuccess, onClose }: Props) {
     </div>
   );
 }
+FILEOF
+
+git add -A
+git commit -m "fix: keep camera running during ISBN lookup"
+git push
+echo "🎉 Déployé !"
