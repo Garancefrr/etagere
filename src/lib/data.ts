@@ -13,7 +13,7 @@ let books: Book[] = [
 ];
 let bookId = 100;
 
-export const getBooks   = (lid: string): Book[]    => books.filter(b => b.library_id === lid);
+export const getBooks   = (lid: string): Book[] => books.filter(b => b.library_id === lid);
 export const addBook    = (b: Omit<Book, "id" | "added_at" | "updated_at">): Book => { const now = new Date().toISOString(); const nb = { ...b, id: `b${bookId++}`, added_at: now, updated_at: now }; books.push(nb); return nb; };
 export const updateBook = (id: string, u: Partial<Book>): void => { books = books.map(b => b.id === id ? { ...b, ...u, updated_at: new Date().toISOString() } : b); };
 export const deleteBook = (id: string): void => { books = books.filter(b => b.id !== id); };
@@ -45,29 +45,46 @@ export function resolveCollection(
 }
 
 // ─── Wishlists ────────────────────────────────────────────────────────────────
-const wishlists = new Map<string, Wishlist>([
-  ["wl_demo", {
-    id: "wl_demo", collection_id: "c1", collection_name: "Astérix", owner_name: "Garance",
-    missing_items: [
-      { id: "wi_1", title: "Astérix — Tome 6", authors: ["Goscinny", "Uderzo"], series_index: 6 },
-      { id: "wi_2", title: "Astérix — Tome 7", authors: ["Goscinny", "Uderzo"], series_index: 7 },
-    ],
-    created_at: new Date().toISOString(),
-  }],
-]);
+const wishlists = new Map<string, Wishlist>();
 
-export const getWishlist    = (id: string): Wishlist | null => wishlists.get(id) ?? null;
-export const claimItem      = (wid: string, iid: string, name: string): boolean => {
-  const wl = wishlists.get(wid); if (!wl) return false;
-  const it = wl.missing_items.find(i => i.id === iid); if (!it || it.claimed_by_name) return false;
-  it.claimed_by_name = name; it.claimed_at = new Date().toISOString(); return true;
+wishlists.set("wl_demo", {
+  id: "wl_demo",
+  collection_id: "c1",
+  collection_name: "Astérix",
+  owner_name: "Garance",
+  missing_items: [
+    { id: "wi_1", title: "Astérix — Tome 6", authors: ["Goscinny", "Uderzo"], series_index: 6 },
+    { id: "wi_2", title: "Astérix — Tome 7", authors: ["Goscinny", "Uderzo"], series_index: 7 },
+  ],
+  created_at: new Date().toISOString(),
+});
+
+export const getWishlist = (id: string): Wishlist | null => wishlists.get(id) ?? null;
+
+export const claimItem = (wid: string, iid: string, name: string): boolean => {
+  const wl = wishlists.get(wid);
+  if (!wl) return false;
+  const it = wl.missing_items.find(i => i.id === iid);
+  if (!it || it.claimed_by_name) return false;
+  it.claimed_by_name = name;
+  it.claimed_at = new Date().toISOString();
+  return true;
 };
+
 export const createWishlist = (col: Collection, owner: string): Wishlist => {
   const total   = col.total_volumes ?? 0;
   const missing = Array.from({ length: total }, (_, i) => i + 1).filter(n => !col.owned_volumes.includes(n));
   const wl: Wishlist = {
-    id: `wl_${Date.now()}`, collection_id: col.id, collection_name: col.name, owner_name: owner,
-    missing_items: missing.map((n, i) => ({ id: `wi_${i}`, title: `${col.name} — Tome ${n}`, authors: col.author ? [col.author] : [], series_index: n })),
+    id: `wl_${Date.now()}`,
+    collection_id: col.id,
+    collection_name: col.name,
+    owner_name: owner,
+    missing_items: missing.map((n, i) => ({
+      id: `wi_${i}`,
+      title: `${col.name} — Tome ${n}`,
+      authors: col.author ? [col.author] : [],
+      series_index: n,
+    })),
     created_at: new Date().toISOString(),
   };
   wishlists.set(wl.id, wl);
