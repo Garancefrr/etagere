@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
       if (profileId) bookData.added_by = profileId;
     }
 
+    // Remove collection_id if empty to avoid DB errors
+    if (!bookData.collection_id) {
+      delete (bookData as any).collection_id;
+    }
+
     const book = await insertBook(bookData);
     return NextResponse.json(book);
   } catch (e: any) {
@@ -21,4 +26,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
-

@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔍 Lookup EAN + ISBN + fix collection_id..."
+cd "$(git rev-parse --show-toplevel)"
+cat > "src/lib/isbn-lookup.ts" << 'FILEOF'
 import { LookupResult, BookType } from "@/types";
 
 // ── Type detection ─────────────────────────────────────────────────────────────
@@ -203,3 +208,38 @@ export async function lookupISBN(code: string): Promise<LookupResult | null> {
 
   return null;
 }
+FILEOF
+cat > "src/app/api/books/add/route.ts" << 'FILEOF'
+import { NextRequest, NextResponse } from "next/server";
+import { getProfileId } from "@/lib/auth";
+import { insertBook } from "@/lib/db";
+import { Book } from "@/types";
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json() as Omit<Book, "id" | "added_at" | "updated_at"> & { email?: string };
+    const { email, ...bookData } = body;
+
+    // Resolve added_by: email → profile UUID
+    if (email) {
+      const profileId = await getProfileId(email);
+      if (profileId) bookData.added_by = profileId;
+    }
+
+    // Remove collection_id if empty to avoid DB errors
+    if (!bookData.collection_id) {
+      delete (bookData as any).collection_id;
+    }
+
+    const book = await insertBook(bookData);
+    return NextResponse.json(book);
+  } catch (e: any) {
+    console.error("POST /api/books/add:", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+FILEOF
+git add -A
+git commit -m "feat: lookup tries isbn/ean/raw on Google Books, fix collection_id handling"
+git push
+echo "🎉 Déployé !"
