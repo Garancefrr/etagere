@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔑 Google Books API avec clé..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/lib/isbn-lookup.ts << 'FILEOF'
 import { LookupResult, BookType } from "@/types";
 
 // ── Type detection ─────────────────────────────────────────────────────────────
@@ -181,3 +186,8 @@ export async function lookupISBN(code: string): Promise<LookupResult | null> {
 
   return null;
 }
+FILEOF
+git add -A
+git commit -m "feat: use Google Books API key for reliable lookups"
+git push
+echo "🎉 Déployé !"
