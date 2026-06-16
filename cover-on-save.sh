@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "📸 Re-cherche cover au moment de l'ajout si titre corrigé..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -441,3 +446,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "feat: auto-search cover with corrected title on save"
+git push
+echo "🎉 Déployé !"
