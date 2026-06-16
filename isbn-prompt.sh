@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "📝 Prompt ISBN pour codes EAN non-ISBN..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -455,3 +460,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "feat: auto-prompt ISBN input for non-ISBN EAN codes (54... Belgian barcodes)"
+git push
+echo "🎉 Déployé !"

@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔢 Clavier numérique pour ISBN..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -298,7 +303,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
       {/* Manual */}
       {showKbd && (
         <div className="flex gap-2 px-5 mb-2 flex-shrink-0">
-          <input type="text" value={manual} onChange={e => setManual(e.target.value)} placeholder="Saisir ISBN ou EAN..."
+          <input type="text" inputMode="numeric" pattern="[0-9-]*" value={manual} onChange={e => setManual(e.target.value.replace(/[^0-9-]/g, ""))}
+            placeholder="ISBN : X-XXXX-XXXX-X"
             onKeyDown={e => e.key === "Enter" && manual.trim() && (processingRef.current = true, doLookup(manual.trim()))}
             className="flex-1 px-4 py-3 rounded-2xl outline-none"
             style={{ background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(91,122,255,0.3)", fontSize: 15 }} />
@@ -455,3 +461,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "fix: numeric keyboard for ISBN input, format X-XXXX-XXXX-X"
+git push
+echo "🎉 Déployé !"
