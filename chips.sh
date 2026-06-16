@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🟢🔴 Chips tomes verts/rouges..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/collection/CollectionCard.tsx << 'FILEOF'
 "use client";
 import { Collection } from "@/types";
 import { TYPE_CONFIG } from "@/lib/constants";
@@ -104,3 +109,8 @@ export default function CollectionCard({ collection, onEdit, onDelete }: Props) 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "fix: always show volume chips — green owned, red missing"
+git push
+echo "🎉 Déployé !"
