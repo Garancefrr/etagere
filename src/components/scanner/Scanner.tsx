@@ -1,13 +1,11 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
-import { X, Keyboard, Check, Plus, RefreshCw, Edit2, AlertTriangle } from "lucide-react";
-import { ScanResult, ReadStatus, BookType } from "@/types";
+import { X, Keyboard, Check, Plus, RefreshCw, Edit2, AlertTriangle, Search, ChevronDown } from "lucide-react";
+import { ScanResult, ReadStatus, BookType, Collection } from "@/types";
 import { STATUS_CONFIG, TYPE_CONFIG } from "@/lib/constants";
 import { Cover } from "@/components/ui/Cover";
 import { Button } from "@/components/ui/Button";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 type Phase = "scanning" | "loading" | "confirm" | "saving" | "success" | "not_found" | "error";
 
@@ -21,33 +19,20 @@ interface Props {
   rapidMode: boolean;
   libraryId: string;
   userEmail: string;
+  collections: Collection[];
   onSuccess: (saved: SavedBook) => void;
   onClose: () => void;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Returns true if the lookup result is reliable enough for rapid-mode auto-save.
- * Falls back to confirmation if there's any doubt.
- */
 function isReliable(result: ScanResult): boolean {
   const { book } = result;
-  // Flagged as unreliable by the lookup (non-ISBN EAN code)
   if (book._unreliable) return false;
-  // Always reliable if series was fully resolved
   if (book.series_name && book.series_index) return true;
-  // Doubt: BD/manga without series info — likely bad metadata
   if (book.book_type === "bd" || book.book_type === "manga") return false;
-  // Doubt: no cover image
   if (!book.cover_url) return false;
-  // Doubt: very short title (likely truncated or wrong)
   if (book.title.length < 4) return false;
-  // Looks good for a regular book
   return true;
 }
-
-// ── Frame corners ─────────────────────────────────────────────────────────────
 
 const CORNERS = [
   { top: -2,    left: -2,  borderTop: "3px solid",    borderLeft: "3px solid",  borderRadius: "6px 0 0 0" },
@@ -56,26 +41,27 @@ const CORNERS = [
   { bottom: -2, right: -2, borderBottom: "3px solid", borderRight: "3px solid", borderRadius: "0 0 6px 0" },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, onClose }: Props) {
+export default function Scanner({ rapidMode, libraryId, userEmail, collections, onSuccess, onClose }: Props) {
   const videoRef      = useRef<HTMLVideoElement>(null);
   const processingRef = useRef(false);
 
-  const [phase,      setPhase]      = useState<Phase>("scanning");
-  const [isbn,       setIsbn]       = useState("");
-  const [result,     setResult]     = useState<ScanResult | null>(null);
-  const [status,     setStatus]     = useState<ReadStatus>("a_lire");
-  const [bookType,   setBookType]   = useState<BookType>("livre");
-  const [manual,     setManual]     = useState("");
-  const [showKbd,    setShowKbd]    = useState(false);
-  const [needsCheck, setNeedsCheck] = useState(false); // rapid mode paused for correction
+  const [phase,       setPhase]       = useState<Phase>("scanning");
+  const [isbn,        setIsbn]        = useState("");
+  const [result,      setResult]      = useState<ScanResult | null>(null);
+  const [status,      setStatus]      = useState<ReadStatus>("a_lire");
+  const [bookType,    setBookType]    = useState<BookType>("livre");
+  const [manual,      setManual]      = useState("");
+  const [showKbd,     setShowKbd]     = useState(false);
+  const [needsCheck,  setNeedsCheck]  = useState(false);
 
   // Editable fields
-  const [editTitle,  setEditTitle]  = useState("");
-  const [editSeries, setEditSeries] = useState("");
-  const [editVolume, setEditVolume] = useState("");
-  const [isEditing,  setIsEditing]  = useState(false);
+  const [editTitle,   setEditTitle]   = useState("");
+  const [editSeries,  setEditSeries]  = useState("");
+  const [editVolume,  setEditVolume]  = useState("");
+  const [editCover,   setEditCover]   = useState<string | undefined>();
+  const [isEditing,   setIsEditing]   = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchingCover, setSearchingCover] = useState(false);
 
   const frameColor =
     phase === "success"                        ? "#22C55E" :
@@ -83,7 +69,10 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
     needsCheck                                 ? "#F59E0B" :
     "#5B7AFF";
 
-  // ── Camera ────────────────────────────────────────────────────────────────
+  // Collection names for dropdown
+  const collectionNames = collections.map(c => c.name);
+
+  // Camera
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
     reader.decodeFromVideoDevice(null, videoRef.current!, (r) => {
@@ -94,16 +83,16 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
     return () => reader.reset();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Lookup ────────────────────────────────────────────────────────────────
+  // Lookup
   const doLookup = useCallback(async (code: string) => {
     setIsbn(code);
     setPhase("loading");
     setNeedsCheck(false);
+    setIsEditing(false);
+    setShowDropdown(false);
 
     try {
-      const res = await fetch(
-        `/api/books/lookup?isbn=${encodeURIComponent(code)}&library_id=${libraryId}`
-      );
+      const res = await fetch(`/api/books/lookup?isbn=${encodeURIComponent(code)}&library_id=${libraryId}`);
       if (!res.ok) { setPhase("not_found"); processingRef.current = false; return; }
 
       const data: ScanResult = await res.json();
@@ -112,21 +101,18 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
       setEditTitle(data.book.title ?? "");
       setEditSeries(data.book.series_name ?? "");
       setEditVolume(data.book.series_index?.toString() ?? "");
-      setIsEditing(false);
+      setEditCover(data.book.cover_url);
 
       if (rapidMode && isReliable(data)) {
-        // Reliable → save immediately
         const saved = await doSave(data, "a_lire", data.book.book_type,
-          data.book.title, data.book.series_name, data.book.series_index);
+          data.book.title, data.book.cover_url, data.book.series_name, data.book.series_index);
         if (saved) {
           setPhase("success");
           setTimeout(() => { setPhase("scanning"); setResult(null); setIsbn(""); processingRef.current = false; }, 800);
-        } else {
-          setPhase("error"); processingRef.current = false;
-        }
+        } else { setPhase("error"); processingRef.current = false; }
       } else {
-        // Classic mode OR rapid mode with doubt → show confirmation
         setNeedsCheck(rapidMode && !isReliable(data));
+        if (rapidMode && !isReliable(data)) setIsEditing(true);
         setPhase("confirm");
         processingRef.current = false;
       }
@@ -135,27 +121,39 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
     }
   }, [rapidMode, libraryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // Search cover by title
+  const searchCover = async () => {
+    if (!editTitle.trim()) return;
+    setSearchingCover(true);
+    try {
+      const q = editSeries ? `${editSeries} ${editTitle}` : editTitle;
+      const res = await fetch(`/api/books/cover?title=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.cover_url) setEditCover(data.cover_url);
+      }
+    } finally {
+      setSearchingCover(false);
+    }
+  };
+
+  // Save
   const doSave = async (
     r: ScanResult, s: ReadStatus, bt: BookType,
-    title: string, seriesName?: string, seriesIndex?: number
+    title: string, coverUrl?: string, seriesName?: string, seriesIndex?: number
   ): Promise<SavedBook | null> => {
     try {
-      let collectionId    = r.collection?.id;
       let collectionName  = r.collection?.name;
       let isNewCollection = r.isNewCollection;
 
-      // If user manually set series info, resolve the collection now
+      // Resolve collection if series was manually set
       const hasManualSeries = seriesName && seriesIndex && (bt === "bd" || bt === "manga");
-      const seriesChanged   = seriesName !== r.book.series_name || seriesIndex !== r.book.series_index;
-
-      if (hasManualSeries && seriesChanged) {
+      if (hasManualSeries) {
         const colRes = await fetch(
           `/api/collections/resolve?library_id=${libraryId}&series_name=${encodeURIComponent(seriesName!)}&series_index=${seriesIndex}&book_type=${bt}`
         );
         if (colRes.ok) {
           const col = await colRes.json();
-          collectionId    = col.collection?.id;
           collectionName  = col.collection?.name;
           isNewCollection = col.isNew;
         }
@@ -165,60 +163,56 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          isbn:           r.book.isbn,
-          title,
-          authors:        r.book.authors,
-          cover_url:      r.book.cover_url,
-          publisher:      r.book.publisher,
+          isbn: r.book.isbn, title,
+          authors: r.book.authors,
+          cover_url: coverUrl ?? r.book.cover_url,
+          publisher: r.book.publisher,
           published_year: r.book.published_year,
-          page_count:     r.book.page_count,
-          description:    r.book.description,
-          book_type:      bt,
-          status:         s,
-          series_name:    seriesName || undefined,
-          series_index:   seriesIndex || undefined,
-          collection_id:  collectionId,
-          library_id:     libraryId,
-          email:          userEmail,
+          page_count: r.book.page_count,
+          description: r.book.description,
+          book_type: bt, status: s,
+          series_name: seriesName || null,
+          series_index: seriesIndex || null,
+          library_id: libraryId,
+          email: userEmail,
         }),
       });
 
-      if (!res.ok) { const e = await res.json(); console.error("doSave:", e); return null; }
+      if (!res.ok) { console.error("doSave:", await res.json()); return null; }
       const saved = await res.json();
-      const out: SavedBook = {
-        title:            saved.title ?? title,
-        collection_name:  collectionName,
-        is_new_collection: isNewCollection,
-      };
+      const out: SavedBook = { title: saved.title ?? title, collection_name: collectionName, is_new_collection: isNewCollection };
       onSuccess(out);
       return out;
     } catch (e) { console.error("doSave:", e); return null; }
   };
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleConfirm = async () => {
     if (!result) return;
     setPhase("saving");
-    const title      = editTitle.trim()  || result.book.title;
-    const seriesName = editSeries.trim() || undefined;
-    const seriesIdx  = editVolume        ? parseInt(editVolume) : undefined;
-    const saved = await doSave(result, status, bookType, title, seriesName, seriesIdx);
-    if (saved) { setPhase("success"); setTimeout(() => { reset(); if (!needsCheck) onClose(); else { setNeedsCheck(false); setPhase("scanning"); } }, 600); }
-    else setPhase("error");
+    const title     = editTitle.trim()  || result.book.title;
+    const serName   = editSeries.trim() || undefined;
+    const serIdx    = editVolume ? parseInt(editVolume) : undefined;
+    const saved = await doSave(result, status, bookType, title, editCover, serName, serIdx);
+    if (saved) {
+      setPhase("success");
+      setTimeout(() => {
+        setPhase("scanning"); setResult(null); setIsbn("");
+        setNeedsCheck(false); setIsEditing(false);
+        processingRef.current = false;
+      }, 600);
+    } else setPhase("error");
   };
 
   const reset = () => {
     setPhase("scanning"); setResult(null); setIsbn("");
-    setNeedsCheck(false); processingRef.current = false;
+    setNeedsCheck(false); setIsEditing(false); processingRef.current = false;
   };
 
-  const handleManual = () => {
-    if (!manual.trim()) return;
-    processingRef.current = true;
-    doLookup(manual.trim());
+  const selectCollection = (name: string) => {
+    setEditSeries(name);
+    setShowDropdown(false);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden" style={{ background: "#060818" }}>
 
@@ -237,8 +231,7 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
         </button>
       </div>
 
-      {/* Mode banner */}
-      {rapidMode && !needsCheck && (
+      {rapidMode && !needsCheck && phase !== "confirm" && (
         <div className="mx-5 mb-1 px-3 py-2 rounded-xl flex-shrink-0"
           style={{ background: "rgba(59,91,255,0.18)", border: "1px solid rgba(91,122,255,0.3)" }}>
           <span style={{ fontSize: 12, color: "#7B80FF" }}>Scan continu — ajout instantané si fiable</span>
@@ -252,29 +245,25 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
         </div>
       )}
 
-      {/* Camera — always running */}
+      {/* Camera */}
       <div className="flex-1 flex items-center justify-center relative min-h-0">
         <div className="relative">
-          <video ref={videoRef}
-            style={{ width: 300, height: 220, objectFit: "cover", borderRadius: 12, display: "block" }} />
+          <video ref={videoRef} style={{ width: 300, height: 220, objectFit: "cover", borderRadius: 12, display: "block" }} />
           <div className="absolute inset-0 pointer-events-none">
             {CORNERS.map((s, i) => (
-              <div key={i} className="absolute" style={{
-                width: 20, height: 20, ...s,
-                borderTopColor:    s.borderTop    ? frameColor : undefined,
+              <div key={i} className="absolute" style={{ width: 20, height: 20, ...s,
+                borderTopColor: s.borderTop ? frameColor : undefined,
                 borderBottomColor: s.borderBottom ? frameColor : undefined,
-                borderLeftColor:   s.borderLeft   ? frameColor : undefined,
-                borderRightColor:  s.borderRight  ? frameColor : undefined,
-                transition: "border-color 0.3s",
-              }} />
+                borderLeftColor: s.borderLeft ? frameColor : undefined,
+                borderRightColor: s.borderRight ? frameColor : undefined,
+                transition: "border-color 0.3s" }} />
             ))}
             {(phase === "scanning" || phase === "loading") && (
               <div className="scan-line absolute left-0 right-0"
                 style={{ height: 2, background: `linear-gradient(90deg,transparent,${frameColor},transparent)` }} />
             )}
             {phase === "success" && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-xl"
-                style={{ background: "rgba(34,197,94,0.2)" }}>
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl" style={{ background: "rgba(34,197,94,0.2)" }}>
                 <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "#22C55E" }}>
                   <Check className="w-8 h-8 text-white" />
                 </div>
@@ -283,23 +272,21 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
           </div>
           {(phase === "loading" || phase === "saving") && (
             <div className="absolute top-2 right-2">
-              <div className="w-5 h-5 rounded-full border-2 animate-spin"
-                style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
+              <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Manual ISBN */}
+      {/* Manual */}
       {showKbd && (
         <div className="flex gap-2 px-5 mb-2 flex-shrink-0">
-          <input type="text" value={manual} onChange={e => setManual(e.target.value)}
-            placeholder="Saisir ISBN ou EAN..."
-            onKeyDown={e => e.key === "Enter" && handleManual()}
+          <input type="text" value={manual} onChange={e => setManual(e.target.value)} placeholder="Saisir ISBN ou EAN..."
+            onKeyDown={e => e.key === "Enter" && manual.trim() && (processingRef.current = true, doLookup(manual.trim()))}
             className="flex-1 px-4 py-3 rounded-2xl outline-none"
             style={{ background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(91,122,255,0.3)", fontSize: 15 }} />
-          <button onClick={handleManual} className="px-5 py-3 rounded-2xl font-bold"
-            style={{ background: "var(--accent)", color: "#fff" }}>OK</button>
+          <button onClick={() => manual.trim() && (processingRef.current = true, doLookup(manual.trim()))}
+            className="px-5 py-3 rounded-2xl font-bold" style={{ background: "var(--accent)", color: "#fff" }}>OK</button>
         </div>
       )}
 
@@ -308,105 +295,99 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
         style={{ background: "var(--surface)", maxHeight: "55vh", overflowY: "auto" }}>
 
         {phase === "scanning" && (
-          <p className="text-center py-2" style={{ fontSize: 14, color: "var(--txt2)" }}>
-            Centrez le code-barres dans le cadre
-          </p>
+          <p className="text-center py-2" style={{ fontSize: 14, color: "var(--txt2)" }}>Centrez le code-barres dans le cadre</p>
         )}
-
         {(phase === "loading" || phase === "saving") && (
           <div className="flex items-center justify-center gap-3 py-2">
-            <div className="w-5 h-5 rounded-full border-2 animate-spin flex-shrink-0"
-              style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
-            <p style={{ fontSize: 14, color: "var(--txt2)" }}>
-              {phase === "saving" ? "Enregistrement…" : `Recherche ${isbn}…`}
-            </p>
+            <div className="w-5 h-5 rounded-full border-2 animate-spin flex-shrink-0" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+            <p style={{ fontSize: 14, color: "var(--txt2)" }}>{phase === "saving" ? "Enregistrement…" : `Recherche ${isbn}…`}</p>
           </div>
         )}
-
         {phase === "success" && (
-          <p className="text-center py-2 font-semibold" style={{ fontSize: 14, color: "#22C55E" }}>
-            ✅ {needsCheck ? "Corrigé et ajouté !" : "Ajouté !"}
-          </p>
+          <p className="text-center py-2 font-semibold" style={{ fontSize: 14, color: "#22C55E" }}>✅ Ajouté !</p>
         )}
-
         {(phase === "not_found" || phase === "error") && (
           <div className="flex items-center justify-between gap-3 py-1">
-            <p style={{ fontSize: 14, color: "var(--miss-t)" }}>
-              {phase === "error" ? "Erreur lors de l'ajout" : `Introuvable — ${isbn}`}
-            </p>
-            <Button onClick={reset} size="sm" variant="secondary">
-              <RefreshCw className="w-4 h-4" /> Réessayer
-            </Button>
+            <p style={{ fontSize: 14, color: "var(--miss-t)" }}>{phase === "error" ? "Erreur lors de l'ajout" : `Introuvable — ${isbn}`}</p>
+            <Button onClick={reset} size="sm" variant="secondary"><RefreshCw className="w-4 h-4" /> Réessayer</Button>
           </div>
         )}
 
         {phase === "confirm" && result && (
           <>
-            {/* Collection badge — only if not editing and series resolved */}
-            {result.collection && !isEditing && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
-                style={{
-                  background: result.isNewCollection ? "var(--accent-l)" : "var(--have-bg)",
-                  border: `1px solid ${result.isNewCollection ? "var(--border)" : "var(--have-b)"}`,
-                }}>
-                {result.isNewCollection
-                  ? <Plus className="w-4 h-4 flex-shrink-0" style={{ color: "var(--accent)" }} />
-                  : <Check className="w-4 h-4 flex-shrink-0" style={{ color: "var(--have-t)" }} />}
-                <p className="truncate font-semibold" style={{
-                  fontSize: 13,
-                  color: result.isNewCollection ? "var(--accent)" : "var(--have-t)",
-                }}>
-                  {result.isNewCollection
-                    ? `Collection « ${result.collection.name} » créée`
-                    : `Tome ${result.book.series_index} → ${result.collection.name}`}
-                </p>
-              </div>
-            )}
-
-            {/* Book preview + edit toggle */}
+            {/* Book preview + edit */}
             <div className="flex gap-3 p-3 rounded-2xl flex-shrink-0"
               style={{ background: "var(--surface2)", border: `1px solid ${needsCheck ? "rgba(245,158,11,0.4)" : "var(--border)"}` }}>
-              <Cover src={result.book.cover_url} alt={editTitle} width={44} height={62} className="rounded-lg flex-shrink-0" />
+              <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                <Cover src={editCover} alt={editTitle} width={44} height={62} className="rounded-lg" />
+                {isEditing && (
+                  <button onClick={searchCover} disabled={searchingCover}
+                    className="px-2 py-0.5 rounded-md flex items-center gap-1"
+                    style={{ background: "var(--accent-l)", fontSize: 10, color: "var(--accent)" }}>
+                    {searchingCover
+                      ? <div className="w-3 h-3 rounded-full border animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+                      : <Search className="w-3 h-3" />}
+                    Photo
+                  </button>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 {isEditing ? (
                   <div className="flex flex-col gap-2">
-                    <input
-                      value={editTitle} onChange={e => setEditTitle(e.target.value)}
-                      placeholder="Titre..."
+                    <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Titre..."
                       className="w-full px-2 py-1.5 rounded-lg outline-none"
-                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 13 }}
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        value={editSeries} onChange={e => setEditSeries(e.target.value)}
-                        placeholder="Série (ex: Les Schtroumpfs)"
-                        className="flex-1 px-2 py-1.5 rounded-lg outline-none"
-                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 12 }}
-                      />
-                      <input
-                        value={editVolume} onChange={e => setEditVolume(e.target.value)}
-                        placeholder="T." type="number"
-                        className="w-14 px-2 py-1.5 rounded-lg outline-none text-center"
-                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 12 }}
-                      />
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 13 }} />
+
+                    {/* Series dropdown */}
+                    <div className="relative">
+                      <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer"
+                        onClick={() => setShowDropdown(v => !v)}
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                        <input value={editSeries}
+                          onChange={e => { setEditSeries(e.target.value); setShowDropdown(true); }}
+                          onClick={e => { e.stopPropagation(); setShowDropdown(true); }}
+                          placeholder="Série (ex: Les Schtroumpfs)"
+                          className="flex-1 outline-none bg-transparent"
+                          style={{ color: "var(--txt1)", fontSize: 12 }} />
+                        <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--txt3)" }} />
+                      </div>
+                      {showDropdown && collectionNames.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-10 max-h-32 overflow-y-auto"
+                          style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                          {collectionNames
+                            .filter(n => !editSeries || n.toLowerCase().includes(editSeries.toLowerCase()))
+                            .map(name => (
+                              <button key={name} onClick={() => selectCollection(name)}
+                                className="w-full text-left px-3 py-2 active:opacity-70"
+                                style={{ fontSize: 12, color: "var(--txt1)", borderBottom: "1px solid var(--border)" }}>
+                                {name}
+                              </button>
+                            ))}
+                          {editSeries.trim() && !collectionNames.includes(editSeries.trim()) && (
+                            <button onClick={() => { setShowDropdown(false); }}
+                              className="w-full text-left px-3 py-2"
+                              style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
+                              + Créer « {editSeries.trim()} »
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
+
+                    <input value={editVolume} onChange={e => setEditVolume(e.target.value)}
+                      placeholder="N° de tome" type="number"
+                      className="w-20 px-2 py-1.5 rounded-lg outline-none"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 12 }} />
                   </div>
                 ) : (
                   <>
                     <p className="font-bold truncate" style={{ fontSize: 14, color: "var(--txt1)" }}>{editTitle}</p>
-                    <p className="truncate" style={{ fontSize: 12, color: "var(--txt2)", marginTop: 2 }}>
-                      {result.book.authors.join(", ")}
-                    </p>
-                    {editSeries && (
-                      <p style={{ fontSize: 11, color: "var(--accent)", marginTop: 2 }}>
-                        {editSeries} #{editVolume}
-                      </p>
-                    )}
+                    <p className="truncate" style={{ fontSize: 12, color: "var(--txt2)", marginTop: 2 }}>{result.book.authors.join(", ")}</p>
+                    {editSeries && <p style={{ fontSize: 11, color: "var(--accent)", marginTop: 2 }}>{editSeries} #{editVolume}</p>}
                   </>
                 )}
               </div>
-              <button
-                onClick={() => setIsEditing(v => !v)}
+              <button onClick={() => { setIsEditing(v => !v); setShowDropdown(false); }}
                 className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 self-start"
                 style={{
                   background: isEditing ? "var(--accent)" : needsCheck ? "rgba(245,158,11,0.2)" : "var(--surface)",
@@ -416,39 +397,28 @@ export default function Scanner({ rapidMode, libraryId, userEmail, onSuccess, on
               </button>
             </div>
 
-            {/* Type picker */}
+            {/* Type + Status */}
             <div className="flex gap-2 flex-shrink-0">
               {(Object.entries(TYPE_CONFIG) as [BookType, { emoji: string; label: string }][]).map(([v, { emoji, label }]) => (
                 <button key={v} onClick={() => setBookType(v)} className="flex-1 py-1.5 rounded-xl font-semibold"
-                  style={{
-                    fontSize: 11,
-                    background: bookType === v ? "var(--accent)" : "var(--surface2)",
-                    color:      bookType === v ? "#fff"          : "var(--txt2)",
-                    border:     `1px solid ${bookType === v ? "var(--accent)" : "var(--border)"}`,
-                  }}>
+                  style={{ fontSize: 11, background: bookType === v ? "var(--accent)" : "var(--surface2)",
+                    color: bookType === v ? "#fff" : "var(--txt2)", border: `1px solid ${bookType === v ? "var(--accent)" : "var(--border)"}` }}>
                   {emoji} {label}
                 </button>
               ))}
             </div>
-
-            {/* Status picker */}
             <div className="flex gap-2 flex-shrink-0">
               {(Object.entries(STATUS_CONFIG) as [ReadStatus, { emoji: string; label: string }][]).map(([v, { emoji, label }]) => (
                 <button key={v} onClick={() => setStatus(v)} className="flex-1 py-2 rounded-xl font-semibold"
-                  style={{
-                    fontSize: 11,
-                    background: status === v ? "var(--accent)" : "var(--surface2)",
-                    color:      status === v ? "#fff"          : "var(--txt2)",
-                    border:     `1px solid ${status === v ? "var(--accent)" : "var(--border)"}`,
-                  }}>
+                  style={{ fontSize: 11, background: status === v ? "var(--accent)" : "var(--surface2)",
+                    color: status === v ? "#fff" : "var(--txt2)", border: `1px solid ${status === v ? "var(--accent)" : "var(--border)"}` }}>
                   {emoji} {label}
                 </button>
               ))}
             </div>
 
             <Button onClick={handleConfirm} className="w-full py-3 rounded-2xl flex-shrink-0" style={{ fontSize: 14 }}>
-              <Check className="w-4 h-4" />
-              {needsCheck ? "Corriger et ajouter" : "Ajouter"}
+              <Check className="w-4 h-4" /> {needsCheck ? "Corriger et ajouter" : "Ajouter"}
             </Button>
           </>
         )}
