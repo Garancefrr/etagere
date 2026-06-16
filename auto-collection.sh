@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔗 Auto-cover + auto-collection matching..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/app/api/books/lookup/route.ts << 'FILEOF'
 import { NextRequest, NextResponse } from "next/server";
 import { lookupISBN } from "@/lib/isbn-lookup";
 import { resolveCollection, getCollections } from "@/lib/db";
@@ -108,3 +113,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ book, isNewCollection: false, isNewVolume: false } satisfies ScanResult);
 }
+FILEOF
+git add -A
+git commit -m "feat: auto-search cover when missing, fuzzy-match existing collections"
+git push
+echo "🎉 Déployé !"
