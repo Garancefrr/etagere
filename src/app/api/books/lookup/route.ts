@@ -3,38 +3,45 @@ import { lookupISBN } from "@/lib/isbn-lookup";
 import { resolveCollection, getCollections } from "@/lib/db";
 import { ScanResult, Collection } from "@/types";
 
-// Try to match a book title against existing collections
 function matchCollection(title: string, collections: Collection[]): Collection | null {
   const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   for (const col of collections) {
     const colName = col.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    // Title contains collection name or vice versa
     if (t.includes(colName) || colName.includes(t)) return col;
-    // Check if any word from collection name (3+ chars) appears in title
     const words = colName.split(/\s+/).filter(w => w.length >= 3);
     if (words.length > 0 && words.every(w => t.includes(w))) return col;
   }
   return null;
 }
 
-// Search Google Books for a cover image by title
 async function searchCover(title: string): Promise<string | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
   const keyParam = apiKey ? `&key=${apiKey}` : "";
   try {
+    const exactQuery = `"${title}"`;
     const res = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&langRestrict=fr${keyParam}`,
+      `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(exactQuery)}&langRestrict=fr&maxResults=5${keyParam}`,
       { signal: AbortSignal.timeout(5000) }
     );
     if (!res.ok) return null;
     const data = await res.json();
-    const vol = data.items?.[0]?.volumeInfo;
-    if (!vol?.imageLinks) return null;
-    let url = vol.imageLinks.large ?? vol.imageLinks.medium ?? vol.imageLinks.thumbnail;
-    if (url) {
-      url = url.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
+    if (!data.items?.length) return null;
+
+    const titleLower = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const titleWords = titleLower.split(/\s+/).filter(w => w.length >= 3);
+
+    for (const item of data.items) {
+      const vol = item.volumeInfo;
+      if (!vol?.imageLinks) continue;
+      const volTitle = (vol.title ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const matchCount = titleWords.filter(w => volTitle.includes(w)).length;
+      if (matchCount < titleWords.length * 0.6) continue;
+
+      let url = vol.imageLinks.large ?? vol.imageLinks.medium ?? vol.imageLinks.thumbnail;
+      if (url) url = url.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
+      return url ?? null;
     }
-    return url ?? null;
+    return null;
   } catch { return null; }
 }
 
@@ -62,22 +69,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Standard lookup
   const book = await lookupISBN(isbn);
   if (!book) return NextResponse.json({ error: "Livre introuvable" }, { status: 404 });
 
-  // Auto-search cover if missing
+  // Auto-search cover if missing — use exact title matching
   if (!book.cover_url && book.title) {
     const cover = await searchCover(book.title);
     if (cover) book.cover_url = cover;
   }
 
-  // Try to auto-resolve collection
+  // Auto-resolve collection
   const isSeries = (book.book_type === "bd" || book.book_type === "manga")
     && book.series_name && book.series_index !== undefined;
 
   if (isSeries) {
-    // Series detected by API — resolve directly
     try {
       const { collection, isNew, isNewVolume } = await resolveCollection(
         library_id, book.series_name!, book.series_index!,
@@ -88,17 +93,13 @@ export async function GET(req: NextRequest) {
       console.error("resolveCollection:", e);
     }
   } else if (book.book_type === "bd" || book.book_type === "manga") {
-    // No series detected — try fuzzy matching against existing collections
     try {
       const existingCollections = await getCollections(library_id);
       const matched = matchCollection(book.title, existingCollections);
       if (matched) {
-        // Found a matching collection — suggest it but don't auto-add (no tome number)
         return NextResponse.json({
           book: { ...book, series_name: matched.name },
-          collection: matched,
-          isNewCollection: false,
-          isNewVolume: false,
+          collection: matched, isNewCollection: false, isNewVolume: false,
         } satisfies ScanResult);
       }
     } catch (e: any) {
