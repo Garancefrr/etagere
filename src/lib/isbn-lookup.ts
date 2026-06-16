@@ -28,88 +28,79 @@ function extractSeries(title: string): { seriesName?: string; seriesIndex?: numb
   return {};
 }
 
+// ── Is this a standard ISBN (978/979) or a product EAN? ───────────────────────
+
+function isStandardISBN(code: string): boolean {
+  return /^(978|979)\d{10}$/.test(code);
+}
+
 // ── Google Books (with API key) ───────────────────────────────────────────────
 
 async function fromGoogleBooks(code: string): Promise<LookupResult | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
   const keyParam = apiKey ? `&key=${apiKey}` : "";
 
-  // Try multiple query strategies
-  const queries = [
-    `isbn:${code}`,          // Standard ISBN lookup
-    `ean:${code}`,           // EAN lookup
-    code,                    // Raw code as general search
-  ];
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=isbn:${code}${keyParam}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) { console.error("Google Books error:", res.status); return null; }
 
-  for (const q of queries) {
-    try {
-      const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}${keyParam}`,
-        { signal: AbortSignal.timeout(5000) }
-      );
+    const data = await res.json();
+    const vol = data.items?.[0]?.volumeInfo;
+    if (!vol?.title) return null;
 
-      if (!res.ok) {
-        console.error(`Google Books error for "${q}":`, res.status);
-        continue;
-      }
+    const categories = (vol.categories ?? []).join(" ").toLowerCase();
+    const fullTitle  = `${vol.title} ${vol.subtitle ?? ""}`.trim();
 
-      const data = await res.json();
-      const vol = data.items?.[0]?.volumeInfo;
-      if (!vol?.title) continue;
+    // Use seriesInfo if available (Google Books specific)
+    let seriesName: string | undefined;
+    let seriesIndex: number | undefined;
 
-      // For raw code searches, verify the result has matching identifiers
-      if (q === code && !queries[0].startsWith("isbn")) {
-        const identifiers = vol.industryIdentifiers ?? [];
-        const hasMatch = identifiers.some((id: any) =>
-          id.identifier === code || id.identifier === code.replace(/-/g, "")
-        );
-        if (!hasMatch && data.totalItems > 1) continue; // Skip unreliable matches
-      }
-
-      const categories = (vol.categories ?? []).join(" ").toLowerCase();
-      const fullTitle  = `${vol.title} ${vol.subtitle ?? ""}`.trim();
-      const { seriesName, seriesIndex } = extractSeries(fullTitle);
-
-      let coverUrl = vol.imageLinks?.extraLarge
-        ?? vol.imageLinks?.large
-        ?? vol.imageLinks?.medium
-        ?? vol.imageLinks?.thumbnail;
-
-      if (coverUrl) {
-        coverUrl = coverUrl
-          .replace("http:", "https:")
-          .replace("&edge=curl", "")
-          .replace(/zoom=\d/, "zoom=3");
-      }
-
-      return {
-        isbn: code, title: vol.title, authors: vol.authors ?? [],
-        cover_url: coverUrl,
-        publisher: vol.publisher,
-        published_year: vol.publishedDate ? parseInt(vol.publishedDate.slice(0, 4)) : undefined,
-        page_count: vol.pageCount,
-        description: vol.description,
-        series_name: seriesName, series_index: seriesIndex,
-        book_type: detectType(categories + " " + fullTitle + " " + (vol.publisher ?? "")),
-      };
-    } catch {
-      continue;
+    const seriesInfo = data.items?.[0]?.volumeInfo?.seriesInfo;
+    if (seriesInfo?.bookDisplayNumber) {
+      seriesIndex = parseInt(seriesInfo.bookDisplayNumber);
     }
-  }
 
-  return null;
+    // Also try extracting from title
+    const parsed = extractSeries(fullTitle);
+    seriesName  = parsed.seriesName ?? seriesName;
+    seriesIndex = seriesIndex ?? parsed.seriesIndex;
+
+    let coverUrl = vol.imageLinks?.extraLarge
+      ?? vol.imageLinks?.large
+      ?? vol.imageLinks?.medium
+      ?? vol.imageLinks?.thumbnail;
+
+    if (coverUrl) {
+      coverUrl = coverUrl
+        .replace("http:", "https:")
+        .replace("&edge=curl", "")
+        .replace(/zoom=\d/, "zoom=3");
+    }
+
+    return {
+      isbn: code, title: vol.title, authors: vol.authors ?? [],
+      cover_url: coverUrl,
+      publisher: vol.publisher,
+      published_year: vol.publishedDate ? parseInt(vol.publishedDate.slice(0, 4)) : undefined,
+      page_count: vol.pageCount,
+      description: vol.description,
+      series_name: seriesName, series_index: seriesIndex,
+      book_type: detectType(categories + " " + fullTitle + " " + (vol.publisher ?? "")),
+    };
+  } catch { return null; }
 }
 
 // ── BnF SRU API ───────────────────────────────────────────────────────────────
 
 async function fromBnF(code: string): Promise<LookupResult | null> {
   try {
-    // Try EAN first, then ISBN
     for (const field of ["bib.ean", "bib.isbn"]) {
       const url = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=${field}+adj+"${code}"&recordSchema=unimarcxchange&maximumRecords=1`;
       const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
       const text = await res.text();
-
       if (text.includes("<numberOfRecords>0")) continue;
 
       const titleA   = text.match(/<datafield tag="200"[^>]*>[\s\S]*?<subfield code="a">([^<]+)/)?.[1]?.trim();
@@ -183,23 +174,35 @@ async function fromOpenLibrary(isbn: string): Promise<LookupResult | null> {
 }
 
 // ── Main lookup ───────────────────────────────────────────────────────────────
+// 
+// For standard ISBN (978/979...): Google Books → BnF → Open Library
+// For product EAN (other prefixes): BnF → Open Library (flagged as unreliable)
 
 export async function lookupISBN(code: string): Promise<LookupResult | null> {
   const clean = code.replace(/[-\s]/g, "");
 
-  // 1. Google Books — tries isbn:, ean:, and raw code
-  const gb = await fromGoogleBooks(clean);
-  if (gb?.title) return gb;
+  if (isStandardISBN(clean)) {
+    // Standard ISBN — reliable lookups
+    const gb = await fromGoogleBooks(clean);
+    if (gb?.title) return gb;
+  }
 
-  // 2. BnF — tries bib.ean then bib.isbn
+  // BnF for all EAN-13
   if (/^\d{13}$/.test(clean)) {
     const bnf = await fromBnF(clean);
     if (bnf?.title) return bnf;
   }
 
-  // 3. Open Library — last resort
+  // For non-ISBN EAN, Open Library often has wrong data
+  // Still try it but mark the result as potentially unreliable
   const ol = await fromOpenLibrary(clean);
-  if (ol?.title) return ol;
+  if (ol?.title) {
+    // Flag: if this is a non-ISBN EAN, the result may be wrong
+    if (!isStandardISBN(clean)) {
+      ol._unreliable = true;
+    }
+    return ol;
+  }
 
   return null;
 }

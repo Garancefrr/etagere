@@ -83,6 +83,7 @@ export interface LookupResult {
   series_name?: string;
   series_index?: number;
   book_type: BookType;
+  _unreliable?: boolean;
 }
 
 export interface ScanResult {
@@ -91,4 +92,3 @@ export interface ScanResult {
   isNewCollection: boolean;
   isNewVolume: boolean;
 }
-
