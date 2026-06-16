@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "📚 BnF en priorité pour tous les EAN-13..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/lib/isbn-lookup.ts << 'FILEOF'
 import { LookupResult, BookType } from "@/types";
 
 // ── Type detection ─────────────────────────────────────────────────────────────
@@ -197,3 +202,8 @@ export async function lookupISBN(code: string): Promise<LookupResult | null> {
 
   return null;
 }
+FILEOF
+git add -A
+git commit -m "feat: BnF first for all EAN-13 codes — books, BD, manga"
+git push
+echo "🎉 Déployé !"
