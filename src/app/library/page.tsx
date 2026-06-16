@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Book, ReadStatus, BookType } from "@/types";
+import { Book, ReadStatus, BookType, Collection } from "@/types";
 import { STATUS_CONFIG, TYPE_CONFIG } from "@/lib/constants";
 import { useLibrary } from "@/hooks/useLibrary";
 import BookCard from "@/components/book/BookCard";
@@ -24,6 +24,7 @@ export default function LibraryPage() {
   const [layout,       setLayout]           = useState<Layout>("grid");
   const [selected,     setSelected]         = useState<Book | null>(null);
   const [showFilters,  setShowFilters]      = useState(false);
+  const [collections,  setCollections]      = useState<Collection[]>([]);
 
   // ── Fetch from Supabase ─────────────────────────────────────────────────────
   const fetchBooks = useCallback(async (lid: string) => {
@@ -38,7 +39,13 @@ export default function LibraryPage() {
 
   // Load on mount
   useEffect(() => {
-    if (library_id) fetchBooks(library_id);
+    if (library_id) {
+      fetchBooks(library_id);
+      fetch(`/api/collections?library_id=${library_id}`)
+        .then(r => r.json())
+        .then(d => Array.isArray(d) ? setCollections(d) : [])
+        .catch(console.error);
+    }
   }, [library_id, fetchBooks]);
 
   // Reload when tab gets focus (e.g. after scanning)
@@ -220,6 +227,7 @@ export default function LibraryPage() {
       {selected && (
         <BookDetail
           book={selected}
+          collections={collections}
           onClose={() => setSelected(null)}
           onUpdate={handleUpdate}
           onDelete={handleDelete}

@@ -95,6 +95,8 @@ export default function CollectionsPage() {
   const [filter,          setFilter]         = useState<Filter>("all");
   const [showCreate,      setShowCreate]     = useState(false);
   const [shareCol,        setShareCol]       = useState<Collection | null>(null);
+  const [editCol,         setEditCol]        = useState<Collection | null>(null);
+  const [deleteId,        setDeleteId]       = useState<string | null>(null);
 
   useEffect(() => {
     if (!library_id) return;
@@ -110,6 +112,18 @@ export default function CollectionsPage() {
     if (!library_id) return;
     const res = await fetch("/api/collections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, library_id, owned_volumes: data.owned_volumes ?? [] }) });
     if (res.ok) { const col = await res.json(); setCollections(prev => [col, ...prev]); }
+  };
+
+  const handleEdit = async (id: string, updates: Partial<Collection>) => {
+    await fetch("/api/collections", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...updates }) });
+    setCollections(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    setEditCol(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch("/api/collections", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    setCollections(prev => prev.filter(c => c.id !== id));
+    setDeleteId(null);
   };
 
   const filtered = collections.filter(c =>
@@ -153,7 +167,25 @@ export default function CollectionsPage() {
           </div>
         ) : filtered.map(c => (
           <div key={c.id}>
-            <CollectionCard collection={c} />
+            <CollectionCard
+              collection={c}
+              onEdit={() => setEditCol(c)}
+              onDelete={() => setDeleteId(c.id)}
+            />
+            {deleteId === c.id && (
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => handleDelete(c.id)}
+                  className="flex-1 py-3 rounded-2xl font-semibold"
+                  style={{ background: "var(--miss-bg)", color: "var(--miss-t)", border: "1px solid var(--miss-b)", fontSize: 13 }}>
+                  Confirmer la suppression
+                </button>
+                <button onClick={() => setDeleteId(null)}
+                  className="px-4 py-3 rounded-2xl font-semibold"
+                  style={{ background: "var(--surface)", color: "var(--txt2)", border: "1px solid var(--border)", fontSize: 13 }}>
+                  Annuler
+                </button>
+              </div>
+            )}
             <button onClick={() => setShareCol(c)} className="w-full mt-2 py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 active:scale-95"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt2)", fontSize: 13 }}>
               <Share2 className="w-4 h-4" style={{ color: "var(--accent)" }} /> Partager cette collection
@@ -163,9 +195,78 @@ export default function CollectionsPage() {
       </div>
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {editCol && <EditModal collection={editCol} onClose={() => setEditCol(null)} onSave={handleEdit} />}
       {shareCol && profile_id && <ShareModal collection={shareCol} profileId={profile_id} onClose={() => setShareCol(null)} />}
       <BottomNav />
     </div>
   );
 }
 
+function EditModal({ collection, onClose, onSave }: {
+  collection: Collection;
+  onClose: () => void;
+  onSave: (id: string, updates: Partial<Collection>) => void;
+}) {
+  const [name,   setName]   = useState(collection.name);
+  const [author, setAuthor] = useState(collection.author ?? "");
+  const [total,  setTotal]  = useState(collection.total_volumes?.toString() ?? "");
+  const [type,   setType]   = useState<BookType>(collection.book_type);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div className="absolute inset-0 backdrop-blur-sm" style={{ background: "rgba(10,13,31,0.6)" }} onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-t-3xl p-6" style={{ background: "var(--surface)" }}>
+        <div className="flex justify-center mb-4"><div className="w-10 h-1 rounded-full" style={{ background: "var(--border)" }} /></div>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-bold" style={{ fontSize: 18, color: "var(--txt1)" }}>Modifier la collection</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+            <X className="w-4 h-4" style={{ color: "var(--txt2)" }} />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Nom</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl outline-none"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Auteur</label>
+            <input type="text" value={author} onChange={e => setAuthor(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl outline-none"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Nombre total de tomes</label>
+            <input type="number" value={total} onChange={e => setTotal(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl outline-none"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Type</label>
+            <div className="flex gap-2">
+              {(["livre","bd","manga"] as BookType[]).map(t => (
+                <button key={t} onClick={() => setType(t)} className="flex-1 py-2.5 rounded-xl font-semibold"
+                  style={{ fontSize: 13, background: type === t ? "var(--accent)" : "var(--surface2)", color: type === t ? "#fff" : "var(--txt2)", border: `1px solid ${type === t ? "var(--accent)" : "var(--border)"}` }}>
+                  {t === "livre" ? "📖 Livre" : t === "bd" ? "🎨 BD" : "⛩️ Manga"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button onClick={() => {
+            if (name.trim()) {
+              onSave(collection.id, {
+                name: name.trim(),
+                author: author.trim() || undefined,
+                total_volumes: total ? parseInt(total) : undefined,
+                book_type: type,
+              });
+            }
+          }} className="w-full py-4 rounded-2xl" style={{ fontSize: 15 }}>
+            Enregistrer
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

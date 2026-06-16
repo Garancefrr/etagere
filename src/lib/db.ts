@@ -160,3 +160,15 @@ export async function getSharedWithMe(viewerId: string): Promise<SharedWithMe[]>
   }));
 }
 
+export async function patchCollection(id: string, updates: Partial<Collection>): Promise<void> {
+  const db = createServerClient();
+  const { error } = await db.from("collections")
+    .update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function removeCollection(id: string): Promise<void> {
+  const db = createServerClient();
+  const { error } = await db.from("collections").delete().eq("id", id);
+  if (error) throw error;
+}

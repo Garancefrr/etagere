@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCollections, insertCollection } from "@/lib/db";
+import { getCollections, insertCollection, patchCollection, removeCollection } from "@/lib/db";
 import { Collection } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -22,3 +22,24 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, ...updates } = await req.json();
+    if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
+    await patchCollection(id, updates);
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { id } = await req.json();
+    if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
+    await removeCollection(id);
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}

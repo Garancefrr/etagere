@@ -2,7 +2,7 @@
 import { Book } from "@/types";
 import { STATUS_CONFIG, TYPE_CONFIG } from "@/lib/constants";
 import { Cover } from "@/components/ui/Cover";
-import { Star } from "lucide-react";
+import { Star, Layers } from "lucide-react";
 
 interface Props {
   book: Book;
@@ -31,6 +31,15 @@ export default function BookCard({ book, onClick }: Props) {
         <span className="absolute top-1.5 right-1.5" style={{ fontSize: 11 }}>
           {emoji}
         </span>
+
+        {/* Collection tag */}
+        {book.series_name && (
+          <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md"
+            style={{ background: "rgba(91,122,255,0.85)", fontSize: 8, fontWeight: 700, color: "#fff" }}>
+            <Layers style={{ width: 8, height: 8 }} />
+            {book.series_name.length > 10 ? book.series_name.slice(0, 10) + "…" : book.series_name}
+          </span>
+        )}
       </div>
 
       {/* Info */}
@@ -56,4 +65,3 @@ export default function BookCard({ book, onClick }: Props) {
     </button>
   );
 }
-

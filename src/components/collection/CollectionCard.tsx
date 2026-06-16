@@ -5,100 +5,74 @@ import { Cover } from "@/components/ui/Cover";
 
 interface Props {
   collection: Collection;
-  onClick?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export default function CollectionCard({ collection, onClick }: Props) {
-  const owned   = collection.owned_volumes.length;
-  const total   = collection.total_volumes;
-  const pct     = total ? Math.round((owned / total) * 100) : 0;
-  const missing = total
-    ? Array.from({ length: total }, (_, i) => i + 1).filter(n => !collection.owned_volumes.includes(n))
-    : [];
+export default function CollectionCard({ collection, onEdit, onDelete }: Props) {
+  const { emoji } = TYPE_CONFIG[collection.book_type] ?? { emoji: "📖" };
+  const owned = collection.owned_volumes ?? [];
+  const total = collection.total_volumes ?? 0;
+  const pct   = total > 0 ? Math.round((owned.length / total) * 100) : 0;
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-      style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}
-      onClick={onClick}
-    >
-      {/* Header */}
-      <div className="flex gap-3 p-3">
-        <Cover
-          src={collection.cover_url}
-          alt={collection.name}
-          width={48}
-          height={64}
-          className="rounded-lg shadow-sm flex-shrink-0"
-        />
-
+    <div className="rounded-2xl overflow-hidden"
+      style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+      <div className="flex gap-3 p-4">
+        <Cover src={collection.cover_url} alt={collection.name} width={56} height={78} className="rounded-xl flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold text-sm leading-tight" style={{ color: "var(--txt1)" }}>
-              {collection.name}
-            </h3>
-            <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1 }}>
-              {TYPE_CONFIG[collection.book_type].emoji}
-            </span>
+            <div className="min-w-0">
+              <p className="font-bold truncate" style={{ fontSize: 16, color: "var(--txt1)" }}>{collection.name}</p>
+              {collection.author && <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>{collection.author}</p>}
+            </div>
+            <span style={{ fontSize: 14, flexShrink: 0 }}>{emoji}</span>
           </div>
-
-          {collection.author && (
-            <p className="text-xs mt-0.5 truncate" style={{ color: "var(--txt2)" }}>{collection.author}</p>
-          )}
-
-          {/* Progress */}
-          <div className="flex items-center gap-2 mt-2">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+          <div className="flex items-center gap-2 mt-3">
+            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--accent)" }} />
             </div>
-            <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--accent)" }}>
-              {owned}{total ? `/${total}` : ""}
+            <span className="font-bold flex-shrink-0" style={{ fontSize: 13, color: "var(--accent)" }}>
+              {owned.length}{total ? `/${total}` : ""}
             </span>
-            {missing.length > 0 && (
-              <span
-                className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                style={{ background: "var(--miss-bg)", color: "var(--miss-t)", border: "1px solid var(--miss-b)" }}
-              >
-                {missing.length} manquant{missing.length > 1 ? "s" : ""}
-              </span>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Volume chips — only if collection has ≤ 40 volumes */}
-      {total && total <= 40 && (
-        <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-          {Array.from({ length: Math.min(total, 20) }, (_, i) => i + 1).map(n => (
-            <VolumeChip key={n} n={n} owned={collection.owned_volumes.includes(n)} />
-          ))}
-          {total > 20 && (
-            <div
-              className="flex items-center justify-center font-bold"
-              style={{ width: 28, height: 28, borderRadius: 7, background: "var(--accent-l)", color: "var(--accent)", fontSize: 10 }}
-            >
-              +{total - 20}
+      {/* Volume chips */}
+      {total > 0 && total <= 40 && (
+        <div className="flex flex-wrap gap-1.5 px-4 pb-4">
+          {Array.from({ length: total }, (_, i) => i + 1).map(n => (
+            <div key={n} className="flex items-center justify-center font-bold"
+              style={{
+                width: 28, height: 28, borderRadius: 7, fontSize: 10,
+                background: owned.includes(n) ? "var(--have-bg)" : "var(--miss-bg)",
+                color:      owned.includes(n) ? "var(--have-t)"  : "var(--miss-t)",
+                border:     owned.includes(n) ? "1px solid var(--have-b)" : "1px dashed var(--miss-b)",
+              }}>
+              {n}
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Actions */}
+      {(onEdit || onDelete) && (
+        <div className="flex gap-2 px-4 pb-4">
+          {onEdit && (
+            <button onClick={onEdit} className="flex-1 py-2 rounded-xl font-semibold text-center"
+              style={{ fontSize: 12, background: "var(--surface2)", color: "var(--txt2)", border: "1px solid var(--border)" }}>
+              ✏️ Modifier
+            </button>
+          )}
+          {onDelete && (
+            <button onClick={onDelete} className="py-2 px-4 rounded-xl font-semibold"
+              style={{ fontSize: 12, background: "var(--miss-bg)", color: "var(--miss-t)", border: "1px solid var(--miss-b)" }}>
+              🗑️
+            </button>
           )}
         </div>
       )}
     </div>
   );
 }
-
-function VolumeChip({ n, owned }: { n: number; owned: boolean }) {
-  return (
-    <div
-      className="flex items-center justify-center font-bold"
-      style={{
-        width: 28, height: 28, borderRadius: 7, fontSize: 10,
-        background: owned ? "var(--have-bg)" : "var(--miss-bg)",
-        color:      owned ? "var(--have-t)"  : "var(--miss-t)",
-        border:     owned ? "1px solid var(--have-b)" : "1px dashed var(--miss-b)",
-      }}
-    >
-      {n}
-    </div>
-  );
-}
-
