@@ -15,3 +15,4 @@ export function createServerClient(): SupabaseClient {
     ? createClient(url, serviceKey, { auth: { persistSession: false } })
     : null as any;
 }
+

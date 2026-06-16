@@ -9,3 +9,4 @@ export function StatusBadge({ status }: { status: ReadStatus }) {
     </span>
   );
 }
+

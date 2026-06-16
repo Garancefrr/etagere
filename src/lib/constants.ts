@@ -14,3 +14,4 @@ export const TYPE_CONFIG: Record<BookType, { label: string; emoji: string }> = {
   bd:    { label: "BD",    emoji: "🎨" },
   manga: { label: "Manga", emoji: "⛩️" },
 };
+

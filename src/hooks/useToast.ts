@@ -16,3 +16,4 @@ export function useToast() {
 
   return { toasts, push, dismiss };
 }
+

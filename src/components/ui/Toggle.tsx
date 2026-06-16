@@ -26,3 +26,4 @@ export function Toggle({ checked, onChange, label }: Props) {
     </button>
   );
 }
+

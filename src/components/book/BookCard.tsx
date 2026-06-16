@@ -56,3 +56,4 @@ export default function BookCard({ book, onClick }: Props) {
     </button>
   );
 }
+

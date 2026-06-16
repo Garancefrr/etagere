@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getProfileId } from "@/lib/auth";
 import { insertBook } from "@/lib/db";
 import { Book } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as Omit<Book, "id" | "added_at" | "updated_at">;
-    // added_by must be a UUID — if it looks like an email, fetch the profile_id
-    if (body.added_by && body.added_by.includes("@")) {
-      const { createServerClient } = await import("@/lib/supabase");
-      const db = createServerClient();
-      const { data } = await db.from("profiles").select("id").eq("email", body.added_by).maybeSingle();
-      if (data) body.added_by = data.id;
-      else body.added_by = body.library_id; // fallback
+    const body = await req.json() as Omit<Book, "id" | "added_at" | "updated_at"> & { email?: string };
+    const { email, ...bookData } = body;
+
+    // Resolve added_by: email → profile UUID
+    if (email) {
+      const profileId = await getProfileId(email);
+      if (profileId) bookData.added_by = profileId;
     }
-    const book = await insertBook(body);
+
+    const book = await insertBook(bookData);
     return NextResponse.json(book);
   } catch (e: any) {
-    console.error("Insert book error:", e);
-    return NextResponse.json({ error: e.message ?? "Erreur lors de l'ajout" }, { status: 500 });
+    console.error("POST /api/books/add:", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+

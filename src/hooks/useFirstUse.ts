@@ -11,3 +11,4 @@ export function useFirstUse(key: string): boolean | null {
 
   return isFirst;
 }
+

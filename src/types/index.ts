@@ -91,3 +91,4 @@ export interface ScanResult {
   isNewCollection: boolean;
   isNewVolume: boolean;
 }
+

@@ -208,3 +208,4 @@ function SegmentedControl({ options, value, onChange }: {
     </div>
   );
 }
+

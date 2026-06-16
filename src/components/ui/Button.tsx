@@ -28,3 +28,4 @@ export function Button({ variant = "primary", size = "md", style, className = ""
     />
   );
 }
+

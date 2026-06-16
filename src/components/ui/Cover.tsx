@@ -34,3 +34,4 @@ export function Cover({ src, alt, width, height, className = "" }: Props) {
     </div>
   );
 }
+
