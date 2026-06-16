@@ -13,35 +13,31 @@ type FilterType   = BookType | "all";
 type FilterStatus = ReadStatus | "all";
 
 export default function LibraryPage() {
-  const { data: session } = useSession();
-  const [books,        setBooks]        = useState<Book[]>([]);
-  const [libraryId,    setLibraryId]    = useState<string | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [search,       setSearch]       = useState("");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
-  const [filterType,   setFilterType]   = useState<FilterType>("all");
-  const [layout,       setLayout]       = useState<Layout>("grid");
-  const [selected,     setSelected]     = useState<Book | null>(null);
-  const [showFilters,  setShowFilters]  = useState(false);
+  const { data: session }                       = useSession();
+  const [books,        setBooks]                = useState<Book[]>([]);
+  const [libraryId,    setLibraryId]            = useState<string | null>(null);
+  const [loading,      setLoading]              = useState(true);
+  const [search,       setSearch]               = useState("");
+  const [filterStatus, setFilterStatus]         = useState<FilterStatus>("all");
+  const [filterType,   setFilterType]           = useState<FilterType>("all");
+  const [layout,       setLayout]               = useState<Layout>("grid");
+  const [selected,     setSelected]             = useState<Book | null>(null);
+  const [showFilters,  setShowFilters]          = useState(false);
 
-  // ── Fetch library + books ─────────────────────────────────────────────────
   const fetchBooks = useCallback(async (lid: string) => {
     const res = await fetch(`/api/books?library_id=${lid}`);
     if (res.ok) setBooks(await res.json());
   }, []);
 
   useEffect(() => {
-    if (!session?.user?.id) return;
-    (async () => {
-      // Get the user's library id
-      const res = await fetch(`/api/library?user_id=${session.user.id}`);
-      if (res.ok) {
-        const { id } = await res.json();
-        setLibraryId(id);
-        await fetchBooks(id);
-      }
-      setLoading(false);
-    })();
+    if (!session?.user?.email) return;
+    fetch(`/api/library?email=${session.user.email}`)
+      .then(r => r.json())
+      .then(async ({ id }) => {
+        if (id) { setLibraryId(id); await fetchBooks(id); }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [session, fetchBooks]);
 
   const stats = useMemo(() => ({
@@ -71,11 +67,10 @@ export default function LibraryPage() {
     setSelected(null);
   };
 
-  const userName = session?.user?.name?.split(" ")[0] ?? "Toi";
+  const userName = session?.user?.name?.split(" ")[0] ?? "toi";
 
   return (
     <div className="flex flex-col min-h-screen pb-24" style={{ background: "var(--bg)" }}>
-
       <div className="sticky top-0 z-30 px-4 pt-12 pb-3" style={{ background: "var(--bg)" }}>
         {/* Hero */}
         <div className="rounded-2xl p-4 mb-4 flex items-center justify-between relative overflow-hidden"
@@ -94,14 +89,12 @@ export default function LibraryPage() {
             </div>
           </div>
           {session?.user?.image
-            ? <img src={session.user.image} alt="" className="w-12 h-12 rounded-xl flex-shrink-0" />
+            ? <img src={session.user.image} alt="" className="w-12 h-12 rounded-xl flex-shrink-0 object-cover" />
             : <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 20 }}>
-                {userName[0]}
-              </div>}
+                style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 20 }}>{userName[0]}</div>}
         </div>
 
-        {/* Search row */}
+        {/* Search */}
         <div className="flex gap-2 mb-3">
           <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-2xl"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -114,7 +107,9 @@ export default function LibraryPage() {
           <button onClick={() => setLayout(l => l === "grid" ? "list" : "grid")}
             className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            {layout === "grid" ? <List className="w-5 h-5" style={{ color: "var(--txt2)" }} /> : <LayoutGrid className="w-5 h-5" style={{ color: "var(--txt2)" }} />}
+            {layout === "grid"
+              ? <List className="w-5 h-5" style={{ color: "var(--txt2)" }} />
+              : <LayoutGrid className="w-5 h-5" style={{ color: "var(--txt2)" }} />}
           </button>
           <button onClick={() => setShowFilters(f => !f)}
             className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -126,10 +121,10 @@ export default function LibraryPage() {
         {showFilters && (
           <div className="space-y-2 mb-2">
             <FilterRow
-              options={[{ v: "all", l: "Tous" }, ...Object.entries(STATUS_CONFIG).map(([v, c]) => ({ v, l: `${c.emoji} ${c.label}` }))]}
+              options={[{ v:"all", l:"Tous" }, ...Object.entries(STATUS_CONFIG).map(([v,c]) => ({ v, l:`${c.emoji} ${c.label}` }))]}
               value={filterStatus} onChange={v => setFilterStatus(v as FilterStatus)} />
             <FilterRow
-              options={[{ v: "all", l: "Tous types" }, ...Object.entries(TYPE_CONFIG).map(([v, c]) => ({ v, l: `${c.emoji} ${c.label}` }))]}
+              options={[{ v:"all", l:"Tous types" }, ...Object.entries(TYPE_CONFIG).map(([v,c]) => ({ v, l:`${c.emoji} ${c.label}` }))]}
               value={filterType} onChange={v => setFilterType(v as FilterType)} />
           </div>
         )}
@@ -144,7 +139,8 @@ export default function LibraryPage() {
       <div className="px-4">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+            <div className="w-8 h-8 rounded-full border-2 animate-spin"
+              style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
           </div>
         ) : filtered.length === 0 ? (
           <Empty hasBooks={books.length > 0} />
@@ -166,8 +162,6 @@ export default function LibraryPage() {
     </div>
   );
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function FilterRow({ options, value, onChange }: { options: { v: string; l: string }[]; value: string; onChange: (v: string) => void }) {
   return (
