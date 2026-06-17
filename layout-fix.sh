@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "📐 Fix layout scanner mobile — caméra + ISBN + correction..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -468,3 +473,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "fix: scanner layout — camera shrinks in correction mode, ISBN input inside panel"
+git push
+echo "🎉 Déployé !"
