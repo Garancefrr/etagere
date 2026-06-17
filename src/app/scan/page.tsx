@@ -158,9 +158,9 @@ function IsbnPanel({ libraryId, userEmail, collections, rapidMode, onSuccess, on
     if (!found) return;
     setLoading(true);
     try {
-      // Resolve collection if series
+      // Create collection only if flagged by lookup
       let collectionName, isNew;
-      if (found.book.series_name) {
+      if (found.book._createCollection && found.book.series_name) {
         const colRes = await fetch(
           `/api/collections/resolve?library_id=${libraryId}&series_name=${encodeURIComponent(found.book.series_name)}&series_index=${found.book.series_index ?? 0}&book_type=${found.book.book_type}`
         );
