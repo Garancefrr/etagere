@@ -111,6 +111,15 @@ export default function LibraryPage() {
   const loading  = libLoading || booksLoading;
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  // Show spinner while initial data is loading (prevents flash of 0s)
+  if (loading && books.length === 0) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
+      <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+      <BottomNav />
+    </div>
+  );
+
   return (
     <div className="flex flex-col min-h-screen pb-24" style={{ background: "var(--bg)" }}>
 
