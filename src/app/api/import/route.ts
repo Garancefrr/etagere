@@ -62,12 +62,8 @@ function extractSeries(title: string): { clean: string; seriesName?: string; ser
 
 // Parse CSV (semicolon-separated, ISO-8859, quoted fields)
 function parseCSV(text: string): BabelioRow[] {
-  const normalized = text.replace(/
-/g, "
-").replace(//g, "
-");
-  const lines = normalized.split("
-").filter(l => l.trim());
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n").filter(l => l.trim());
   if (lines.length < 2) return [];
   const headers = lines[0].split(";").map(h => h.replace(/^"|"$/g, "").trim());
   const rows: BabelioRow[] = [];
