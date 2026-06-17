@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "⌨️ Saisie ISBN directe depuis la page scanner..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/app/scan/page.tsx << 'FILEOF'
 "use client";
 import { useState, useCallback, useRef } from "react";
 import { useData } from "@/contexts/DataContext";
@@ -255,3 +260,8 @@ function IsbnPanel({ libraryId, userEmail, collections, rapidMode, onSuccess, on
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "feat: inline ISBN input panel on scan page, no camera needed"
+git push
+echo "🎉 Déployé !"
