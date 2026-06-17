@@ -1,9 +1,9 @@
 "use client";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { Book, ReadStatus, BookType, Collection } from "@/types";
+import { Book, ReadStatus, BookType } from "@/types";
 import { STATUS_CONFIG, TYPE_CONFIG } from "@/lib/constants";
-import { useLibrary } from "@/hooks/useLibrary";
+import { useData } from "@/contexts/DataContext";
 import BookCard from "@/components/book/BookCard";
 import BookDetail from "@/components/book/BookDetail";
 import BottomNav from "@/components/layout/BottomNav";
@@ -14,50 +14,14 @@ type FilterType   = BookType | "all";
 type FilterStatus = ReadStatus | "all";
 
 export default function LibraryPage() {
-  const { data: session }                   = useSession();
-  const { library_id, loading: libLoading } = useLibrary();
-  const [books,          setBooks]          = useState<Book[]>([]);
-  const [initialLoaded,  setInitialLoaded]  = useState(false);
+  const { data: session } = useSession();
+  const { books, collections, loading, library_id, setBooks, refreshAll, refreshCollections } = useData();
   const [search,         setSearch]         = useState("");
   const [filterStatus,   setFilterStatus]   = useState<FilterStatus>("all");
   const [filterType,     setFilterType]     = useState<FilterType>("all");
   const [layout,         setLayout]         = useState<Layout>("grid");
   const [selected,       setSelected]       = useState<Book | null>(null);
   const [showFilters,    setShowFilters]    = useState(false);
-  const [collections,    setCollections]    = useState<Collection[]>([]);
-
-  // ── Fetch from Supabase ─────────────────────────────────────────────────────
-  const fetchBooks = useCallback(async (lid: string) => {
-    try {
-      const res = await fetch(`/api/books?library_id=${lid}`);
-      if (res.ok) setBooks(await res.json());
-    } finally {
-      setInitialLoaded(true);
-    }
-  }, []);
-
-  // Load on mount — single fetch after library_id resolves
-  useEffect(() => {
-    if (!library_id) return;
-    fetchBooks(library_id);
-    fetch(`/api/collections?library_id=${library_id}`)
-      .then(r => r.json())
-      .then(d => Array.isArray(d) ? setCollections(d) : [])
-      .catch(console.error);
-  }, [library_id, fetchBooks]);
-
-  // Reload when tab gets focus (e.g. after scanning)
-  useEffect(() => {
-    if (!library_id) return;
-    const onFocus = () => fetchBooks(library_id);
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") fetchBooks(library_id);
-    });
-    return () => {
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [library_id, fetchBooks]);
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -84,15 +48,7 @@ export default function LibraryPage() {
     });
     setBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
     setSelected(prev => prev?.id === id ? { ...prev, ...updates } as Book : prev);
-    // Refresh collections if series info was updated
-    if (updates.series_name || updates.series_index) {
-      if (library_id) {
-        fetch(`/api/collections?library_id=${library_id}`)
-          .then(r => r.json())
-          .then(d => Array.isArray(d) ? setCollections(d) : [])
-          .catch(console.error);
-      }
-    }
+    if (updates.series_name || updates.series_index) refreshCollections();
   };
 
   const handleDelete = async (id: string) => {
@@ -103,14 +59,13 @@ export default function LibraryPage() {
     });
     setBooks(prev => prev.filter(b => b.id !== id));
     setSelected(null);
+    refreshCollections();
   };
 
   const userName = session?.user?.name?.split(" ")[0] ?? "toi";
-  const loading  = libLoading || !initialLoaded;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  // Show spinner until first fetch is complete
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
       <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
@@ -165,7 +120,7 @@ export default function LibraryPage() {
             />
           </div>
           <button
-            onClick={() => library_id && fetchBooks(library_id)}
+            onClick={() => refreshAll()}
             className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <RefreshCw className="w-5 h-5" style={{ color: "var(--txt2)" }} />

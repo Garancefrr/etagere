@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Collection, BookType } from "@/types";
 import { useLibrary } from "@/hooks/useLibrary";
+import { useData } from "@/contexts/DataContext";
 import CollectionCard from "@/components/collection/CollectionCard";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/Button";
@@ -250,24 +251,14 @@ function EditModal({ collection, onClose, onSave }: { collection: Collection; on
 type Filter = "all" | "bd" | "manga" | "livre";
 
 export default function CollectionsPage() {
-  const { library_id, profile_id, loading: libLoading } = useLibrary();
-  const [collections,     setCollections]    = useState<Collection[]>([]);
-  const [initialLoaded,    setInitialLoaded]  = useState(false);
+  const { collections, setCollections, loading: dataLoading, library_id } = useData();
+  const { profile_id } = useLibrary();
   const [search,          setSearch]         = useState("");
   const [filter,          setFilter]         = useState<Filter>("all");
   const [showCreate,      setShowCreate]     = useState(false);
   const [shareCol,        setShareCol]       = useState<Collection | null>(null);
   const [editCol,         setEditCol]        = useState<Collection | null>(null);
   const [deleteId,        setDeleteId]       = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!library_id) return;
-    fetch(`/api/collections?library_id=${library_id}`)
-      .then(r => r.json())
-      .then(d => Array.isArray(d) ? setCollections(d) : [])
-      .catch(console.error)
-      .finally(() => setInitialLoaded(true));
-  }, [library_id]);
 
   const handleCreate = async (data: Partial<Collection>) => {
     if (!library_id) return;
@@ -291,7 +282,7 @@ export default function CollectionsPage() {
     (filter === "all" || c.book_type === filter) &&
     (!search || c.name.toLowerCase().includes(search.toLowerCase()) || c.author?.toLowerCase().includes(search.toLowerCase()))
   );
-  const loading = libLoading || !initialLoaded;
+  const loading = dataLoading;
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>

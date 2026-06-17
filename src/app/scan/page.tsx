@@ -1,9 +1,9 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
+import { useData } from "@/contexts/DataContext";
 import { useLibrary } from "@/hooks/useLibrary";
 import { useToast } from "@/hooks/useToast";
 import { useFirstUse } from "@/hooks/useFirstUse";
-import { Collection } from "@/types";
 import BottomNav from "@/components/layout/BottomNav";
 import Scanner from "@/components/scanner/Scanner";
 import { ToastStack } from "@/components/ui/Toast";
@@ -21,21 +21,12 @@ const MODES = [
 ] as const;
 
 export default function ScanPage() {
-  const { library_id, email, loading }    = useLibrary();
+  const { library_id, email } = useLibrary();
+  const { collections, refreshAll, loading: dataLoading } = useData();
   const [scanning,    setScanning]        = useState(false);
   const [rapidMode,   setRapidMode]       = useState(false);
-  const [collections, setCollections]     = useState<Collection[]>([]);
   const isFirstUse                        = useFirstUse("folio_scan_seen");
   const { toasts, push, dismiss }         = useToast();
-
-  // Fetch existing collections for the dropdown
-  useEffect(() => {
-    if (!library_id) return;
-    fetch(`/api/collections?library_id=${library_id}`)
-      .then(r => r.json())
-      .then(d => Array.isArray(d) ? setCollections(d) : [])
-      .catch(console.error);
-  }, [library_id]);
 
   const handleSuccess = useCallback((saved: SavedBook) => {
     push(saved.title, saved.is_new_collection
@@ -44,17 +35,11 @@ export default function ScanPage() {
         ? `Ajouté à ${saved.collection_name}`
         : undefined);
     if (!rapidMode) setScanning(false);
-    // Refresh collections list after adding
-    if (library_id) {
-      fetch(`/api/collections?library_id=${library_id}`)
-        .then(r => r.json())
-        .then(d => Array.isArray(d) ? setCollections(d) : [])
-        .catch(console.error);
-    }
-  }, [rapidMode, push, library_id]);
+    refreshAll(); // Refresh shared context
+  }, [rapidMode, push, refreshAll]);
 
   if (isFirstUse === null) return null;
-  const ready = !!library_id && !!email && !loading;
+  const ready = !!library_id && !!email && !dataLoading;
 
   return (
     <>

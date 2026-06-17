@@ -1,37 +1,11 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { useLibrary } from "@/hooks/useLibrary";
-import { Book } from "@/types";
+import { useMemo } from "react";
+import { useData } from "@/contexts/DataContext";
 import BottomNav from "@/components/layout/BottomNav";
 import { BookOpen, TrendingUp, FileText, Star } from "lucide-react";
 
 export default function StatsPage() {
-  const { library_id, loading: libLoading } = useLibrary();
-  const [books,   setBooks]   = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!library_id) return;
-    fetch(`/api/books?library_id=${library_id}`)
-      .then(r => r.json())
-      .then(d => Array.isArray(d) ? setBooks(d) : [])
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [library_id]);
-
-  // Auto-refresh on focus
-  useEffect(() => {
-    if (!library_id) return;
-    const refresh = () => {
-      fetch(`/api/books?library_id=${library_id}`)
-        .then(r => r.json())
-        .then(d => Array.isArray(d) ? setBooks(d) : [])
-        .catch(console.error);
-    };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
-    return () => window.removeEventListener("focus", refresh);
-  }, [library_id]);
+  const { books, loading } = useData();
 
   const stats = useMemo(() => {
     const lu      = books.filter(b => b.status === "lu");
@@ -55,9 +29,7 @@ export default function StatsPage() {
     };
   }, [books]);
 
-  const isLoading = libLoading || loading;
-
-  if (isLoading) return (
+  if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
       <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
       <BottomNav />

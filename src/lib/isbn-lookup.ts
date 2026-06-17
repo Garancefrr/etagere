@@ -24,12 +24,6 @@ function extractSeries(title: string): { seriesName?: string; seriesIndex?: numb
 }
 
 // ISBN = 978/979 (13 digits) or 10 digits
-function isISBN(code: string): boolean {
-  if (/^(978|979)\d{10}$/.test(code)) return true; // ISBN-13
-  if (/^\d{9}[\dXx]$/.test(code)) return true;      // ISBN-10
-  return false;
-}
-
 // ── Google Books ──────────────────────────────────────────────────────────────
 
 async function fromGoogleBooks(code: string): Promise<LookupResult | null> {
@@ -162,35 +156,38 @@ async function fromOpenLibrary(isbn: string): Promise<LookupResult | null> {
 function isbn10to13(isbn10: string): string {
   const base = "978" + isbn10.slice(0, 9);
   let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    sum += parseInt(base[i]) * (i % 2 === 0 ? 1 : 3);
-  }
-  const check = (10 - (sum % 10)) % 10;
-  return base + check;
+  for (let i = 0; i < 12; i++) sum += parseInt(base[i]) * (i % 2 === 0 ? 1 : 3);
+  return base + ((10 - (sum % 10)) % 10);
 }
 
 export async function lookupISBN(code: string): Promise<LookupResult | null> {
   const clean = code.replace(/[-\s]/g, "");
-
-  // Prepare both ISBN-10 and ISBN-13 versions
   const isIsbn10 = /^\d{9}[\dXx]$/.test(clean);
   const isIsbn13 = /^(978|979)\d{10}$/.test(clean);
-  const codes = [clean];
-  if (isIsbn10) codes.push(isbn10to13(clean));
+  const isbn13 = isIsbn10 ? isbn10to13(clean) : clean;
 
-  // Try Google Books with all code variants
-  for (const c of codes) {
-    const gb = await fromGoogleBooks(c);
-    if (gb?.title) return gb;
+  // For valid ISBNs: try Google Books + BnF in PARALLEL (2-3x faster)
+  if (isIsbn10 || isIsbn13) {
+    const results = await Promise.allSettled([
+      fromGoogleBooks(clean),
+      isIsbn10 ? fromGoogleBooks(isbn13) : Promise.resolve(null),
+      fromBnF(isbn13),
+      isIsbn10 ? fromBnF(clean) : Promise.resolve(null),
+    ]);
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value?.title) return r.value;
+    }
   }
 
-  // Try BnF with all code variants (supports both ISBN-10 and ISBN-13)
-  for (const c of codes) {
-    const bnf = await fromBnF(c);
+  // Fallback: BnF for non-ISBN 13-digit codes
+  if (/^\d{13}$/.test(clean) && !isIsbn13) {
+    const bnf = await fromBnF(clean);
     if (bnf?.title) return bnf;
   }
 
-  // Open Library with all variants
+  // Last resort: Open Library
+  const codes = [clean];
+  if (isIsbn10) codes.push(isbn13);
   for (const c of codes) {
     const ol = await fromOpenLibrary(c);
     if (ol?.title) {

@@ -1,42 +1,49 @@
-/**
- * Resolves the current user's library_id and profile_id from their email.
- * Used by all pages that need to interact with the database.
- */
+"use client";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 
-export interface LibraryContext {
+interface LibState {
   library_id: string | null;
   profile_id: string | null;
   email: string | null;
   loading: boolean;
 }
 
-export function useLibrary(): LibraryContext {
-  const { data: session }             = useSession();
-  const [library_id, setLibraryId]   = useState<string | null>(null);
-  const [profile_id, setProfileId]   = useState<string | null>(null);
-  const [loading,    setLoading]      = useState(true);
+const CACHE_KEY = "folio_library";
+
+export function useLibrary(): LibState {
+  const { data: session, status } = useSession();
+  const [state, setState] = useState<LibState>(() => {
+    // Try sessionStorage first for instant load
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          return { ...parsed, loading: false };
+        }
+      } catch { /* ignore */ }
+    }
+    return { library_id: null, profile_id: null, email: null, loading: true };
+  });
 
   useEffect(() => {
+    if (status === "loading") return;
     const email = session?.user?.email;
-    if (!email) { setLoading(false); return; }
+    if (!email) { setState({ library_id: null, profile_id: null, email: null, loading: false }); return; }
+
+    // If cached email matches, skip fetch
+    if (state.library_id && state.email === email && !state.loading) return;
 
     fetch(`/api/library?email=${encodeURIComponent(email)}`)
       .then(r => r.json())
       .then(d => {
-        if (d.id)         setLibraryId(d.id);
-        if (d.profile_id) setProfileId(d.profile_id);
+        const s = { library_id: d.id, profile_id: d.profile_id, email, loading: false };
+        setState(s);
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [session]);
+      .catch(() => setState(prev => ({ ...prev, loading: false })));
+  }, [session?.user?.email, status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return {
-    library_id,
-    profile_id,
-    email: session?.user?.email ?? null,
-    loading,
-  };
+  return state;
 }
-
