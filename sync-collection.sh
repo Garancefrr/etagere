@@ -1,3 +1,58 @@
+#!/bin/bash
+set -e
+echo "🔄 Sync collection quand on modifie le tome depuis la biblio..."
+cd "$(git rev-parse --show-toplevel)"
+cat > "src/app/api/books/route.ts" << 'FILEOF'
+import { NextRequest, NextResponse } from "next/server";
+import { getBooks, patchBook, removeBook, resolveCollection, findCollection } from "@/lib/db";
+import { BookType } from "@/types";
+
+export async function GET(req: NextRequest) {
+  const library_id = req.nextUrl.searchParams.get("library_id");
+  if (!library_id) return NextResponse.json({ error: "library_id manquant" }, { status: 400 });
+  try {
+    return NextResponse.json(await getBooks(library_id));
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, library_id, ...updates } = await req.json();
+    if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
+
+    // If series_name and series_index are being updated, sync the collection
+    if (library_id && updates.series_name && updates.series_index) {
+      try {
+        const bookType = (updates.book_type ?? "bd") as BookType;
+        if (bookType === "bd" || bookType === "manga") {
+          await resolveCollection(
+            library_id,
+            updates.series_name,
+            updates.series_index,
+            { book_type: bookType }
+          );
+        }
+      } catch (e) {
+        console.error("Collection sync error:", e);
+      }
+    }
+
+    await patchBook(id, updates);
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const { id } = await req.json();
+  await removeBook(id);
+  return NextResponse.json({ ok: true });
+}
+FILEOF
+cat > "src/app/library/page.tsx" << 'FILEOF'
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -302,3 +357,8 @@ function BookListRow({ book, onClick }: { book: Book; onClick: () => void }) {
     </button>
   );
 }
+FILEOF
+git add -A
+git commit -m "feat: sync collection when series/tome updated from book detail"
+git push
+echo "🎉 Déployé !"
