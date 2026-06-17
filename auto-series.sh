@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔗 Auto-fill série si collection existante..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -464,3 +469,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "feat: auto-fill series from existing collection match"
+git push
+echo "🎉 Déployé !"

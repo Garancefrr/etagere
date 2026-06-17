@@ -3,6 +3,37 @@ import { lookupISBN } from "@/lib/isbn-lookup";
 import { getCollections, findCollection } from "@/lib/db";
 import { ScanResult, Collection } from "@/types";
 
+// Guess series name by searching Google Books for related volumes
+async function guessSeriesFromTitle(title: string): Promise<string | null> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
+  const keyParam = apiKey ? `&key=${apiKey}` : "";
+
+  // Try progressively shorter prefixes of the title
+  const words = title.split(/\s+/);
+  for (let len = Math.min(words.length, 4); len >= 2; len--) {
+    const prefix = words.slice(0, len).join(" ");
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=intitle:"${encodeURIComponent(prefix)}"+Tome&langRestrict=fr&maxResults=3${keyParam}`,
+        { signal: AbortSignal.timeout(4000) }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (!data.items?.length) continue;
+
+      // Look for "Series - Tome X" pattern in results
+      for (const item of data.items) {
+        const t = item.volumeInfo?.title ?? "";
+        const match = t.match(/^(.+?)\s*[-–—]\s*(?:tome|t\.?|vol)\s*\d+/i);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
 function matchCollection(title: string, collections: Collection[]): Collection | null {
   const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   for (const col of collections) {
@@ -90,6 +121,14 @@ export async function GET(req: NextRequest) {
       }
     } catch (e: any) {
       console.error("matchCollection:", e);
+    }
+
+    // No existing collection — try to guess series name from Google Books
+    if (!book.series_name) {
+      const guessed = await guessSeriesFromTitle(book.title);
+      if (guessed) {
+        book.series_name = guessed;
+      }
     }
   }
 
