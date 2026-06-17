@@ -3,6 +3,40 @@ import { lookupISBN } from "@/lib/isbn-lookup";
 import { getCollections, findCollection } from "@/lib/db";
 import { ScanResult, Collection } from "@/types";
 
+// Check if an author has a saga or is prolific (> 2 books)
+async function checkAuthor(author: string): Promise<{ sagaName: string | null; bookCount: number }> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
+  const keyParam = apiKey ? `&key=${apiKey}` : "";
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=inauthor:"${encodeURIComponent(author)}"&langRestrict=fr&maxResults=10${keyParam}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return { sagaName: null, bookCount: 0 };
+    const data = await res.json();
+    const total = data.totalItems ?? 0;
+    if (!data.items?.length) return { sagaName: null, bookCount: total };
+
+    // Look for a saga (seriesInfo or "Tome X" pattern)
+    for (const item of data.items) {
+      const vol = item.volumeInfo;
+      if (!vol?.title) continue;
+      // Check seriesInfo
+      if (vol.seriesInfo?.bookDisplayNumber) {
+        const match = vol.title.match(/^(.+?)\s*[-–—]\s*(?:tome|t\.?|vol)\s*\d+/i);
+        if (match) return { sagaName: match[1].trim(), bookCount: total };
+      }
+      // Check title pattern
+      const tomeMatch = vol.title.match(/^(.+?)\s*[-–—,]\s*(?:tome|t\.?|vol(?:ume)?\.?|livre|#)\s*(\d+)/i);
+      if (tomeMatch) return { sagaName: tomeMatch[1].trim(), bookCount: total };
+    }
+
+    return { sagaName: null, bookCount: total };
+  } catch {
+    return { sagaName: null, bookCount: 0 };
+  }
+}
+
 // Guess series name by searching Google Books for related volumes
 async function guessSeriesFromTitle(title: string): Promise<string | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
@@ -87,48 +121,48 @@ export async function GET(req: NextRequest) {
     if (cover) book.cover_url = cover;
   }
 
-  // SUGGEST collection — never create here
-  // Creation only happens via /api/collections/resolve (called from Scanner on save)
-  const isSeries = (book.book_type === "bd" || book.book_type === "manga")
-    && book.series_name && book.series_index !== undefined;
+  // ── Collection / Series suggestion ──────────────────────────────────────────
+  // Never create collections here — only suggest. Creation via /api/collections/resolve.
 
-  if (isSeries) {
-    // Check if collection already exists (without creating it)
-    const existing = await findCollection(library_id, book.series_name!);
+  const existingCollections = await getCollections(library_id).catch(() => [] as Collection[]);
+
+  // 1. Series already detected (from API) — works for all types
+  if (book.series_name && book.series_index !== undefined) {
+    const existing = await findCollection(library_id, book.series_name);
     if (existing) {
       return NextResponse.json({
         book, collection: existing,
         isNewCollection: false,
-        isNewVolume: !existing.owned_volumes.includes(book.series_index!),
+        isNewVolume: !existing.owned_volumes.includes(book.series_index),
       } satisfies ScanResult);
     }
-    // Series detected but no collection yet — return suggestion without creating
+    return NextResponse.json({ book, isNewCollection: false, isNewVolume: false } satisfies ScanResult);
+  }
+
+  // 2. Fuzzy match title against existing collections (all types)
+  const matched = matchCollection(book.title, existingCollections);
+  if (matched) {
     return NextResponse.json({
-      book, isNewCollection: false, isNewVolume: false,
+      book: { ...book, series_name: matched.name },
+      collection: matched, isNewCollection: false, isNewVolume: false,
     } satisfies ScanResult);
   }
 
-  // BD/manga without series — try fuzzy match existing collections
-  if (book.book_type === "bd" || book.book_type === "manga") {
-    try {
-      const existingCollections = await getCollections(library_id);
-      const matched = matchCollection(book.title, existingCollections);
-      if (matched) {
-        return NextResponse.json({
-          book: { ...book, series_name: matched.name },
-          collection: matched, isNewCollection: false, isNewVolume: false,
-        } satisfies ScanResult);
-      }
-    } catch (e: any) {
-      console.error("matchCollection:", e);
-    }
+  // 3. BD/manga: guess series from Google Books
+  if ((book.book_type === "bd" || book.book_type === "manga") && !book.series_name) {
+    const guessed = await guessSeriesFromTitle(book.title);
+    if (guessed) book.series_name = guessed;
+  }
 
-    // No existing collection — try to guess series name from Google Books
-    if (!book.series_name) {
-      const guessed = await guessSeriesFromTitle(book.title);
-      if (guessed) {
-        book.series_name = guessed;
-      }
+  // 4. Livre: check if author has a saga or is prolific
+  if (book.book_type === "livre" && !book.series_name && book.authors.length > 0) {
+    const authorInfo = await checkAuthor(book.authors[0]);
+    if (authorInfo.sagaName) {
+      // Author has a saga containing this book
+      book.series_name = authorInfo.sagaName;
+    } else if (authorInfo.bookCount > 2) {
+      // Prolific author — suggest collection by author name
+      book.series_name = book.authors[0];
     }
   }
 
