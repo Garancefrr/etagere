@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔍 ISBN-10 → ISBN-13 conversion + BnF pour tous les ISBN..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/lib/isbn-lookup.ts << 'FILEOF'
 import { LookupResult, BookType } from "@/types";
 
 function detectType(terms: string): BookType {
@@ -188,3 +193,8 @@ export async function lookupISBN(code: string): Promise<LookupResult | null> {
 
   return null;
 }
+FILEOF
+git add -A
+git commit -m "fix: ISBN-10 to ISBN-13 conversion, try all APIs with both formats"
+git push
+echo "🎉 Déployé !"
