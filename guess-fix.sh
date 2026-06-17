@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔮 Fix détection série — mots-clés + suffixes + mots distinctifs..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/app/api/books/lookup/route.ts << 'FILEOF'
 import { NextRequest, NextResponse } from "next/server";
 import { lookupISBN } from "@/lib/isbn-lookup";
 import { getCollections, findCollection } from "@/lib/db";
@@ -183,3 +188,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ book, isNewCollection: false, isNewVolume: false } satisfies ScanResult);
 }
+FILEOF
+git add -A
+git commit -m "fix: series guess uses keywords + suffixes, not just prefixes"
+git push
+echo "🎉 Déployé !"
