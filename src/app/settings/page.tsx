@@ -7,7 +7,8 @@ import { useTheme } from "@/components/layout/ThemeProvider";
 import { Toggle } from "@/components/ui/Toggle";
 import { Cover } from "@/components/ui/Cover";
 import { SharedWithMe } from "@/lib/db";
-import { Moon, LogOut, ChevronRight, Gift, BookOpen } from "lucide-react";
+import { Moon, LogOut, ChevronRight, Gift, BookOpen, Upload } from "lucide-react";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { data: session }         = useSession();
@@ -79,6 +80,21 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Import */}
+      <div className="mx-4 mb-3 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+        <div className="px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Données</span>
+        </div>
+        <Link href="/import" className="flex items-center gap-3 px-4 py-4 active:opacity-70">
+          <Upload className="w-5 h-5 flex-shrink-0" style={{ color: "var(--accent)" }} />
+          <div className="flex-1">
+            <p style={{ fontSize: 15, fontWeight: 500, color: "var(--txt1)" }}>Importer depuis Babelio</p>
+            <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>Importe ton export CSV Babelio</p>
+          </div>
+          <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
+        </Link>
+      </div>
+
       <button onClick={() => signOut({ callbackUrl: "/login" })}
         className="mx-4 py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95"
         style={{ width: "calc(100% - 2rem)", background: "var(--miss-bg)", border: "1px solid var(--miss-b)" }}>
@@ -91,4 +107,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
