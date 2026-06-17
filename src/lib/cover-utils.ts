@@ -5,11 +5,11 @@
 export async function validateCoverUrl(url: string | undefined | null): Promise<string | null> {
   if (!url) return null;
 
-  // Clean the URL
-  let clean = url
+  // Clean the URL — use zoom=3 for better resolution
+  const clean = url
     .replace("http:", "https:")
     .replace("&edge=curl", "")
-    .replace(/zoom=\d/, "zoom=1");
+    .replace(/zoom=\d/, "zoom=3");
 
   // Known placeholder patterns to reject
   const PLACEHOLDER_PATTERNS = [
@@ -22,18 +22,6 @@ export async function validateCoverUrl(url: string | undefined | null): Promise<
   ];
 
   if (PLACEHOLDER_PATTERNS.some(p => clean.toLowerCase().includes(p))) return null;
-
-  // For Google Books, try fetching to check if image is real
-  if (clean.includes("books.google.com")) {
-    try {
-      const res = await fetch(clean, { method: "HEAD", signal: AbortSignal.timeout(3000) });
-      // Google returns 200 even for "Image not available" but with small content-length
-      const size = res.headers.get("content-length");
-      if (size && parseInt(size) < 2000) return null; // too small = placeholder
-      if (!res.ok) return null;
-      return clean;
-    } catch { return null; }
-  }
 
   return clean;
 }
