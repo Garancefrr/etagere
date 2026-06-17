@@ -16,36 +16,34 @@ type FilterStatus = ReadStatus | "all";
 export default function LibraryPage() {
   const { data: session }                   = useSession();
   const { library_id, loading: libLoading } = useLibrary();
-  const [books,        setBooks]            = useState<Book[]>([]);
-  const [booksLoading, setBooksLoading]     = useState(false);
-  const [search,       setSearch]           = useState("");
-  const [filterStatus, setFilterStatus]     = useState<FilterStatus>("all");
-  const [filterType,   setFilterType]       = useState<FilterType>("all");
-  const [layout,       setLayout]           = useState<Layout>("grid");
-  const [selected,     setSelected]         = useState<Book | null>(null);
-  const [showFilters,  setShowFilters]      = useState(false);
-  const [collections,  setCollections]      = useState<Collection[]>([]);
+  const [books,          setBooks]          = useState<Book[]>([]);
+  const [initialLoaded,  setInitialLoaded]  = useState(false);
+  const [search,         setSearch]         = useState("");
+  const [filterStatus,   setFilterStatus]   = useState<FilterStatus>("all");
+  const [filterType,     setFilterType]     = useState<FilterType>("all");
+  const [layout,         setLayout]         = useState<Layout>("grid");
+  const [selected,       setSelected]       = useState<Book | null>(null);
+  const [showFilters,    setShowFilters]    = useState(false);
+  const [collections,    setCollections]    = useState<Collection[]>([]);
 
   // ── Fetch from Supabase ─────────────────────────────────────────────────────
   const fetchBooks = useCallback(async (lid: string) => {
-    setBooksLoading(true);
     try {
       const res = await fetch(`/api/books?library_id=${lid}`);
       if (res.ok) setBooks(await res.json());
     } finally {
-      setBooksLoading(false);
+      setInitialLoaded(true);
     }
   }, []);
 
-  // Load on mount
+  // Load on mount — single fetch after library_id resolves
   useEffect(() => {
-    if (library_id) {
-      fetchBooks(library_id);
-      fetch(`/api/collections?library_id=${library_id}`)
-        .then(r => r.json())
-        .then(d => Array.isArray(d) ? setCollections(d) : [])
-        .catch(console.error);
-    }
+    if (!library_id) return;
+    fetchBooks(library_id);
+    fetch(`/api/collections?library_id=${library_id}`)
+      .then(r => r.json())
+      .then(d => Array.isArray(d) ? setCollections(d) : [])
+      .catch(console.error);
   }, [library_id, fetchBooks]);
 
   // Reload when tab gets focus (e.g. after scanning)
@@ -108,12 +106,12 @@ export default function LibraryPage() {
   };
 
   const userName = session?.user?.name?.split(" ")[0] ?? "toi";
-  const loading  = libLoading || booksLoading;
+  const loading  = libLoading || !initialLoaded;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  // Show spinner while initial data is loading (prevents flash of 0s)
-  if (loading && books.length === 0) return (
+  // Show spinner until first fetch is complete
+  if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
       <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
       <BottomNav />
