@@ -173,12 +173,18 @@ export async function GET(req: NextRequest) {
   if (book.book_type === "livre" && !book.series_name && book.authors.length > 0) {
     const authorInfo = await checkAuthor(book.authors[0]);
     if (authorInfo.sagaName) {
-      // Author has a saga containing this book
       book.series_name = authorInfo.sagaName;
+      book._createCollection = true; // saga → auto-create collection
     } else if (authorInfo.bookCount > 2) {
-      // Prolific author — suggest collection by author name
       book.series_name = book.authors[0];
+      book._createCollection = true; // prolific author → auto-create collection
     }
+    // else: 1-2 books → just add to library, no collection
+  }
+
+  // For BD/manga: always create collection if series detected
+  if ((book.book_type === "bd" || book.book_type === "manga") && book.series_name) {
+    book._createCollection = true;
   }
 
   return NextResponse.json({ book, isNewCollection: false, isNewVolume: false } satisfies ScanResult);

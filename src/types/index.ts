@@ -84,6 +84,7 @@ export interface LookupResult {
   series_index?: number;
   book_type: BookType;
   _unreliable?: boolean;
+  _createCollection?: boolean; // true only if a collection should be auto-created (saga or prolific author)
 }
 
 export interface ScanResult {
