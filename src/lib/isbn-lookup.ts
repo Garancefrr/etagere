@@ -1,3 +1,4 @@
+import { validateCoverUrl } from "@/lib/cover-utils";
 import { LookupResult, BookType } from "@/types";
 
 function detectType(terms: string): BookType {
@@ -63,12 +64,13 @@ async function fromGoogleBooks(code: string): Promise<LookupResult | null> {
       seriesName = cleanTitle.replace(/\s*[-–—].*$/, "").trim() || undefined;
     }
 
-    let coverUrl = vol.imageLinks?.extraLarge ?? vol.imageLinks?.large ?? vol.imageLinks?.medium ?? vol.imageLinks?.thumbnail;
-    if (coverUrl) coverUrl = coverUrl.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
+    let rawCover = vol.imageLinks?.extraLarge ?? vol.imageLinks?.large ?? vol.imageLinks?.medium ?? vol.imageLinks?.thumbnail;
+    if (rawCover) rawCover = rawCover.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
+    const coverUrl = await validateCoverUrl(rawCover);
 
     return {
       isbn: code, title: cleanTitle, authors: vol.authors ?? [],
-      cover_url: coverUrl, publisher: vol.publisher,
+      cover_url: coverUrl ?? undefined, publisher: vol.publisher,
       published_year: vol.publishedDate ? parseInt(vol.publishedDate.slice(0, 4)) : undefined,
       page_count: vol.pageCount, description: vol.description,
       series_name: seriesName, series_index: seriesIndex,
