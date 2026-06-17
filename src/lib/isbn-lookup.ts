@@ -46,21 +46,34 @@ async function fromGoogleBooks(code: string): Promise<LookupResult | null> {
     if (!vol?.title) return null;
 
     const categories = (vol.categories ?? []).join(" ").toLowerCase();
-    const fullTitle  = `${vol.title} ${vol.subtitle ?? ""}`.trim();
+    const rawTitle   = vol.title ?? "";
+    // Clean title: take first part before ";" (multi-story compilations)
+    const cleanTitle = rawTitle.includes(";") ? rawTitle.split(";")[0].trim() : rawTitle;
+    const fullTitle  = `${cleanTitle} ${vol.subtitle ?? ""}`.trim();
 
     let seriesName: string | undefined;
     let seriesIndex: number | undefined;
     const seriesInfo = data.items?.[0]?.volumeInfo?.seriesInfo;
     if (seriesInfo?.bookDisplayNumber) seriesIndex = parseInt(seriesInfo.bookDisplayNumber);
+
+    // Try extracting series from "Series - Tome X - Title" pattern
     const parsed = extractSeries(fullTitle);
     seriesName  = parsed.seriesName ?? seriesName;
     seriesIndex = seriesIndex ?? parsed.seriesIndex;
+
+    // If no series detected but it looks like a BD, try to extract series name
+    // from the title pattern "Les X something" → series "Les X"
+    if (!seriesName && seriesIndex) {
+      // We have a volume number from seriesInfo but no name
+      // Use the main title words as series name
+      seriesName = cleanTitle.replace(/\s*[-–—].*$/, "").trim() || undefined;
+    }
 
     let coverUrl = vol.imageLinks?.extraLarge ?? vol.imageLinks?.large ?? vol.imageLinks?.medium ?? vol.imageLinks?.thumbnail;
     if (coverUrl) coverUrl = coverUrl.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
 
     return {
-      isbn: code, title: vol.title, authors: vol.authors ?? [],
+      isbn: code, title: cleanTitle, authors: vol.authors ?? [],
       cover_url: coverUrl, publisher: vol.publisher,
       published_year: vol.publishedDate ? parseInt(vol.publishedDate.slice(0, 4)) : undefined,
       page_count: vol.pageCount, description: vol.description,
