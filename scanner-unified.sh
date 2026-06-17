@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "⚡ Scanner unifié — même logique, deux modes..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/components/scanner/Scanner.tsx << 'FILEOF'
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
@@ -485,3 +490,8 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "feat: unified scanner logic — same confirm panel, rapid continues after save"
+git push
+echo "🎉 Déployé !"
