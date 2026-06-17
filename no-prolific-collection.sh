@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔧 Fix — auteur prolifique sans saga = pas de collection..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/app/api/books/lookup/route.ts << 'FILEOF'
 import { NextRequest, NextResponse } from "next/server";
 import { lookupISBN } from "@/lib/isbn-lookup";
 import { getCollections, findCollection } from "@/lib/db";
@@ -188,3 +193,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ book, isNewCollection: false, isNewVolume: false } satisfies ScanResult);
 }
+FILEOF
+git add -A
+git commit -m "fix: no collection for prolific authors, only for explicit numbered sagas"
+git push
+echo "🎉 Déployé !"
