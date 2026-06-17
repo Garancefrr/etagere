@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔧 Fix type error startWithKeyboard..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/app/scan/page.tsx << 'FILEOF'
 "use client";
 import { useState, useCallback, useRef } from "react";
 import { useData } from "@/contexts/DataContext";
@@ -253,3 +258,8 @@ function IsbnPanel({ libraryId, userEmail, collections, rapidMode, onSuccess, on
     </div>
   );
 }
+FILEOF
+git add -A
+git commit -m "fix: remove startWithKeyboard prop — no longer in Scanner interface"
+git push
+echo "🎉 Déployé !"
