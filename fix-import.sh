@@ -1,3 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔧 Fix regex CSV parser..."
+cd "$(git rev-parse --show-toplevel)"
+cat > src/app/api/import/route.ts << 'FILEOF'
 import { NextRequest, NextResponse } from "next/server";
 import { getProfileId } from "@/lib/auth";
 import { insertBook, findCollection, resolveCollection, patchCollection } from "@/lib/db";
@@ -168,3 +173,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+FILEOF
+git add -A
+git commit -m "fix: CSV parser regex corruption from heredoc"
+git push
+echo "🎉 Déployé !"
