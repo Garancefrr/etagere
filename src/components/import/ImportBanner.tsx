@@ -7,6 +7,7 @@ const JOB_KEY = "folio_import_job";
 interface ImportJob {
   job_id: string | null;
   total: number;
+  lastError?: string;
 }
 
 interface JobStatus {
@@ -80,7 +81,7 @@ export function ImportBanner({ onComplete }: { onComplete?: () => void }) {
       } catch { /* ignore */ }
     };
     poll();
-    const interval = setInterval(poll, 2000);
+    const interval = setInterval(poll, 1500);
     return () => clearInterval(interval);
   }, [job, done, onComplete]);
 
@@ -124,7 +125,7 @@ export function ImportBanner({ onComplete }: { onComplete?: () => void }) {
             {isDone
               ? `${status?.imported ?? "?"} livres importés${(status?.errors ?? 0) > 0 ? `, ${status.errors} erreurs` : ""}`
               : hasTracking
-                ? `${status?.imported ?? 0} / ${job.total} livres · ${pct}%`
+                ? `${status?.imported ?? 0} / ${status?.total ?? job.total} livres · ${pct}%`
                 : `${job.total} livres en cours… tu peux naviguer librement`}
           </p>
         </div>
