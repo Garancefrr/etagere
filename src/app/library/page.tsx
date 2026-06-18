@@ -110,20 +110,20 @@ export default function LibraryPage() {
     <div className="flex flex-col min-h-screen pb-24" style={{ background: "var(--bg)" }}>
 
       {/* Sticky header */}
-      <div className="sticky top-0 z-30 px-4 pt-12 pb-3" style={{ background: "var(--bg)" }}>
+      <div className="sticky top-0 z-30 px-3 pt-10 pb-2" style={{ background: "var(--bg)" }}>
 
         {/* Hero banner */}
-        <div className="rounded-2xl p-4 mb-4 flex items-center justify-between relative overflow-hidden"
+        <div className="rounded-2xl p-3 mb-3 flex items-center justify-between relative overflow-hidden"
           style={{ background: "var(--accent)" }}>
-          <div className="absolute right-[-20px] top-[-20px] w-28 h-28 rounded-full"
+          <div className="absolute right-[-20px] top-[-20px] w-24 h-24 rounded-full"
             style={{ background: "rgba(255,255,255,0.07)" }} />
           <div>
-            <p className="font-bold text-white" style={{ fontSize: 16 }}>Bienvenue {userName} 👋</p>
-            <div className="flex gap-5 mt-2">
+            <p className="font-bold text-white" style={{ fontSize: 15 }}>Bienvenue {userName} 👋</p>
+            <div className="flex gap-4 mt-1.5">
               {(["lu","en_cours","a_lire"] as ReadStatus[]).map(s => (
                 <div key={s}>
-                  <p className="font-bold text-white leading-none" style={{ fontSize: 22 }}>{stats[s]}</p>
-                  <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 2 }}>
+                  <p className="font-bold text-white leading-none" style={{ fontSize: 20 }}>{stats[s]}</p>
+                  <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 1 }}>
                     {STATUS_CONFIG[s].label}
                   </p>
                 </div>
@@ -140,54 +140,48 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        {/* Search + controls */}
+        {/* Search + controls — responsive */}
         <div className="flex gap-2 mb-3">
-          <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-2xl"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <Search className="w-5 h-5 flex-shrink-0" style={{ color: "var(--txt3)" }} />
+          <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-2xl"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", minWidth: 0 }}>
+            <Search className="w-4 h-4 flex-shrink-0" style={{ color: "var(--txt3)" }} />
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Titre, auteur..."
-              className="flex-1 outline-none bg-transparent"
-              style={{ color: "var(--txt1)", fontSize: 15 }}
+              className="flex-1 outline-none bg-transparent min-w-0"
+              style={{ color: "var(--txt1)", fontSize: 14 }}
             />
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: refreshing ? "var(--accent-l)" : "var(--surface)", border: `1px solid ${refreshing ? "var(--accent)" : "var(--border)"}` }}>
-            <RefreshCw className="w-5 h-5"
+          {/* Refresh */}
+          <button onClick={handleRefresh} disabled={refreshing}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <RefreshCw className="w-4 h-4"
               style={{ color: refreshing ? "var(--accent)" : "var(--txt2)", animation: refreshing ? "spin 0.8s linear infinite" : "none" }} />
           </button>
+          {/* Cover refresh — only when needed */}
           {books.some(b => !b.cover_url) && (
-            <button
-              onClick={refreshCovers}
-              disabled={refreshingCovers}
-              title="Récupérer les images manquantes"
-              className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: refreshingCovers ? "var(--accent-l)" : "var(--surface)", border: `1px solid ${refreshingCovers ? "var(--accent)" : "var(--border)"}` }}>
+            <button onClick={refreshCovers} disabled={refreshingCovers}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               {refreshingCovers
                 ? <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
-                : <ImageIcon className="w-5 h-5" style={{ color: "var(--accent)" }} />}
+                : <ImageIcon className="w-4 h-4" style={{ color: "var(--accent)" }} />}
             </button>
           )}
-          <button
-            onClick={() => setLayout(l => l === "grid" ? "list" : "grid")}
-            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+          {/* Layout toggle */}
+          <button onClick={() => setLayout(l => l === "grid" ? "list" : "grid")}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             {layout === "grid"
-              ? <List className="w-5 h-5" style={{ color: "var(--txt2)" }} />
-              : <LayoutGrid className="w-5 h-5" style={{ color: "var(--txt2)" }} />}
+              ? <List className="w-4 h-4" style={{ color: "var(--txt2)" }} />
+              : <LayoutGrid className="w-4 h-4" style={{ color: "var(--txt2)" }} />}
           </button>
-          <button
-            onClick={() => setShowFilters(f => !f)}
-            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background: showFilters ? "var(--accent)" : "var(--surface)",
-              border: `1px solid ${showFilters ? "var(--accent)" : "var(--border)"}`,
-            }}>
-            <SlidersHorizontal className="w-5 h-5" style={{ color: showFilters ? "#fff" : "var(--txt2)" }} />
+          {/* Filters */}
+          <button onClick={() => setShowFilters(f => !f)}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: showFilters ? "var(--accent)" : "var(--surface)", border: `1px solid ${showFilters ? "var(--accent)" : "var(--border)"}` }}>
+            <SlidersHorizontal className="w-4 h-4" style={{ color: showFilters ? "#fff" : "var(--txt2)" }} />
           </button>
         </div>
 
@@ -209,14 +203,14 @@ export default function LibraryPage() {
       </div>
 
       {/* Count */}
-      <div className="flex justify-between items-center px-4 mb-3">
+      <div className="flex justify-between items-center px-3 mb-2">
         <span className="font-bold" style={{ fontSize: 15, color: "var(--txt1)" }}>
           {loading ? "Chargement…" : `${filtered.length} ouvrage${filtered.length > 1 ? "s" : ""}`}
         </span>
       </div>
 
       {/* Book list */}
-      <div className="px-4">
+      <div className="px-3">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 rounded-full border-2 animate-spin"
@@ -232,7 +226,7 @@ export default function LibraryPage() {
             </p>
           </div>
         ) : layout === "grid" ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
             {filtered.map(b => <BookCard key={b.id} book={b} onClick={() => setSelected(b)} />)}
           </div>
         ) : (
