@@ -66,7 +66,7 @@ async function fromGoogleBooks(code: string): Promise<LookupResult | null> {
 
     let rawCover = vol.imageLinks?.extraLarge ?? vol.imageLinks?.large ?? vol.imageLinks?.medium ?? vol.imageLinks?.thumbnail;
     if (rawCover) rawCover = rawCover.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
-    const coverUrl = await validateCoverUrl(rawCover);
+    const coverUrl = validateCoverUrl(rawCover);
 
     return {
       isbn: code, title: cleanTitle, authors: vol.authors ?? [],

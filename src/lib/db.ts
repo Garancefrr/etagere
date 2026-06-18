@@ -1,24 +1,21 @@
 import { createServerClient } from "@/lib/supabase";
-import { Book, Collection, Wishlist } from "@/types";
-
-// ── Library ───────────────────────────────────────────────────────────────────
-
-export async function getLibraryId(userId: string): Promise<string> {
-  const db = createServerClient();
-  const { data, error } = await db
-    .from("libraries").select("id").eq("owner_id", userId).single();
-  if (error || !data) throw new Error(`Library not found for user ${userId}`);
-  return data.id;
-}
+import { Book, Collection } from "@/types";
 
 // ── Books ─────────────────────────────────────────────────────────────────────
 
 export async function getBooks(libraryId: string): Promise<Book[]> {
   const db = createServerClient();
   const { data, error } = await db
-    .from("books").select("*").eq("library_id", libraryId).order("added_at", { ascending: false });
+    .from("books").select("*").eq("library_id", libraryId)
+    .order("added_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Book[];
+}
+
+export async function getBook(id: string): Promise<Book | null> {
+  const db = createServerClient();
+  const { data } = await db.from("books").select("*").eq("id", id).maybeSingle();
+  return data as Book | null;
 }
 
 export async function insertBook(book: Omit<Book, "id" | "added_at" | "updated_at">): Promise<Book> {
@@ -31,12 +28,9 @@ export async function insertBook(book: Omit<Book, "id" | "added_at" | "updated_a
 export async function patchBook(id: string, updates: Partial<Book>, libraryId?: string): Promise<void> {
   const db = createServerClient();
   const patch: any = { ...updates, updated_at: new Date().toISOString() };
-  if (updates.status === "lu" && !updates.finished_at) {
-    patch.finished_at = new Date().toISOString();
-  }
-  if (updates.status && updates.status !== "lu") {
-    patch.finished_at = null;
-  }
+  // Auto-set finished_at when marking as "lu"
+  if (updates.status === "lu" && !updates.finished_at) patch.finished_at = new Date().toISOString();
+  if (updates.status && updates.status !== "lu") patch.finished_at = null;
   let query = db.from("books").update(patch).eq("id", id);
   if (libraryId) query = query.eq("library_id", libraryId);
   const { error } = await query;
@@ -64,7 +58,8 @@ export async function getCollections(libraryId: string): Promise<Collection[]> {
 export async function findCollection(libraryId: string, name: string): Promise<Collection | null> {
   const db = createServerClient();
   const { data } = await db
-    .from("collections").select("*").eq("library_id", libraryId).ilike("name", name).maybeSingle();
+    .from("collections").select("*")
+    .eq("library_id", libraryId).ilike("name", name).maybeSingle();
   return data as Collection | null;
 }
 
@@ -77,7 +72,6 @@ export async function insertCollection(col: Omit<Collection, "id" | "created_at"
 
 export async function addVolumeToCollection(id: string, currentVolumes: number[], newVolume: number): Promise<void> {
   const db = createServerClient();
-  // Deduplicate — use Set to prevent duplicates
   const merged = Array.from(new Set([...currentVolumes, newVolume])).sort((a, b) => a - b);
   const { error } = await db.from("collections")
     .update({ owned_volumes: merged, updated_at: new Date().toISOString() }).eq("id", id);
@@ -92,10 +86,21 @@ export async function removeVolumeFromCollection(id: string, currentVolumes: num
   if (error) throw error;
 }
 
-export async function getBook(id: string): Promise<Book | null> {
+export async function patchCollection(id: string, updates: Partial<Collection>, libraryId?: string): Promise<void> {
   const db = createServerClient();
-  const { data } = await db.from("books").select("*").eq("id", id).maybeSingle();
-  return data as Book | null;
+  let query = db.from("collections")
+    .update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
+  if (libraryId) query = query.eq("library_id", libraryId);
+  const { error } = await query;
+  if (error) throw error;
+}
+
+export async function removeCollection(id: string, libraryId?: string): Promise<void> {
+  const db = createServerClient();
+  let query = db.from("collections").delete().eq("id", id);
+  if (libraryId) query = query.eq("library_id", libraryId);
+  const { error } = await query;
+  if (error) throw error;
 }
 
 export async function resolveCollection(
@@ -104,31 +109,23 @@ export async function resolveCollection(
 ): Promise<{ collection: Collection; isNew: boolean; isNewVolume: boolean }> {
   const existing = await findCollection(libraryId, seriesName);
   if (existing) {
-    const isNewVolume = !existing.owned_volumes.includes(seriesIndex);
+    const deduped = Array.from(new Set(existing.owned_volumes));
+    const isNewVolume = !deduped.includes(seriesIndex);
     if (isNewVolume) {
-      await addVolumeToCollection(existing.id, existing.owned_volumes, seriesIndex);
-      existing.owned_volumes = [...existing.owned_volumes, seriesIndex].sort((a, b) => a - b);
+      await addVolumeToCollection(existing.id, deduped, seriesIndex);
+      existing.owned_volumes = Array.from(new Set([...deduped, seriesIndex])).sort((a, b) => a - b);
     }
     return { collection: existing, isNew: false, isNewVolume };
   }
   const newCol = await insertCollection({
     library_id: libraryId, name: seriesName, author: opts.author,
-    cover_url: opts.cover_url, book_type: opts.book_type ?? "bd", owned_volumes: [seriesIndex],
+    cover_url: opts.cover_url, book_type: opts.book_type ?? "bd",
+    owned_volumes: [seriesIndex],
   });
   return { collection: newCol, isNew: true, isNewVolume: true };
 }
 
-// ── Wishlists ─────────────────────────────────────────────────────────────────
-
-export async function getWishlist(id: string): Promise<Wishlist | null> {
-  const db = createServerClient();
-  const { data } = await db.from("wishlists").select("*").eq("id", id).maybeSingle();
-  if (!data) return null;
-  return { id: data.id, collection_id: data.collection_id, collection_name: data.collection_name,
-    owner_name: data.owner_name, missing_items: data.missing_items ?? [], created_at: data.created_at } as Wishlist;
-}
-
-// ── Shared collections ────────────────────────────────────────────────────────
+// ── Sharing ───────────────────────────────────────────────────────────────────
 
 export async function createShare(collectionId: string, ownerId: string): Promise<string> {
   const db = createServerClient();
@@ -152,8 +149,13 @@ export async function getShareByToken(token: string): Promise<{
     .select(`id, owner:profiles!owner_id(name), collection:collections(*)`)
     .eq("token", token).gt("expires_at", new Date().toISOString()).maybeSingle();
   if (!data) return null;
-  return { id: data.id, collection: data.collection as unknown as Collection, owner_name: (data.owner as any)?.name ?? "Quelqu'un" };
+  return {
+    id: data.id,
+    collection: data.collection as unknown as Collection,
+    owner_name: (data.owner as any)?.name ?? "Quelqu'un",
+  };
 }
+
 
 export async function registerViewer(shareId: string, viewerId: string): Promise<void> {
   const db = createServerClient();
@@ -182,21 +184,4 @@ export async function getSharedWithMe(viewerId: string): Promise<SharedWithMe[]>
     total_volumes:   row.share.collection.total_volumes,
     owned_volumes:   row.share.collection.owned_volumes ?? [],
   }));
-}
-
-export async function patchCollection(id: string, updates: Partial<Collection>, libraryId?: string): Promise<void> {
-  const db = createServerClient();
-  let query = db.from("collections")
-    .update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
-  if (libraryId) query = query.eq("library_id", libraryId);
-  const { error } = await query;
-  if (error) throw error;
-}
-
-export async function removeCollection(id: string, libraryId?: string): Promise<void> {
-  const db = createServerClient();
-  let query = db.from("collections").delete().eq("id", id);
-  if (libraryId) query = query.eq("library_id", libraryId);
-  const { error } = await query;
-  if (error) throw error;
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { insertCollection, patchBook, findCollection } from "@/lib/db";
+import { insertCollection, patchBook } from "@/lib/db";
 import { BookType } from "@/types";
 
 export async function POST(req: NextRequest) {

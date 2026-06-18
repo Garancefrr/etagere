@@ -1,26 +1,25 @@
-/**
- * Validates and cleans a cover URL.
- * Returns null if the URL likely points to a placeholder/unavailable image.
- */
-export async function validateCoverUrl(url: string | undefined | null): Promise<string | null> {
-  if (!url) return null;
+const PLACEHOLDER_PATTERNS = [
+  "no_cover", "nocover", "image_not_available",
+  "no-image", "default_cover", "notoile=1",
+];
 
+/**
+ * Validates a cover URL — rejects known placeholder patterns.
+ * Returns cleaned URL or null.
+ */
+export function validateCoverUrl(url: string | undefined | null): string | null {
+  if (!url) return null;
   const clean = url
     .replace("http:", "https:")
     .replace("&edge=curl", "")
     .replace(/zoom=\d/, "zoom=3");
-
-  const PLACEHOLDER_PATTERNS = [
-    "no_cover", "nocover", "image_not_available",
-    "no-image", "default_cover", "notoile=1",
-  ];
-
   if (PLACEHOLDER_PATTERNS.some(p => clean.toLowerCase().includes(p))) return null;
   return clean;
 }
 
 /**
- * Searches Google Books for a cover — tries multiple queries with fallbacks.
+ * Searches Google Books for a cover by title.
+ * Tries multiple query variants for better match rate.
  */
 export async function searchCoverByTitle(title: string, seriesName?: string): Promise<string | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
@@ -39,14 +38,12 @@ export async function searchCoverByTitle(title: string, seriesName?: string): Pr
       if (!res.ok) continue;
       const data = await res.json();
       if (!data.items?.length) continue;
-
       for (const item of data.items) {
         const vol = item.volumeInfo;
         if (!vol?.imageLinks) continue;
         let url = vol.imageLinks.extraLarge ?? vol.imageLinks.large ?? vol.imageLinks.medium ?? vol.imageLinks.thumbnail;
         if (!url) continue;
-        url = url.replace("http:", "https:").replace("&edge=curl", "").replace(/zoom=\d/, "zoom=3");
-        const validated = await validateCoverUrl(url);
+        const validated = validateCoverUrl(url);
         if (validated) return validated;
       }
     } catch { continue; }

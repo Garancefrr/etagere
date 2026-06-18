@@ -15,16 +15,15 @@ export interface Book {
   description?: string;
   book_type: BookType;
   status: ReadStatus;
-  rating?: number;       // 1–5
+  rating?: number;
   note?: string;
   series_name?: string;
   series_index?: number;
-  collection_id?: string;
   library_id: string;
-  added_by: string;
+  added_by?: string;
   added_at: string;
   updated_at: string;
-  finished_at?: string | null; // set when status becomes "lu"
+  finished_at?: string | null;
 }
 
 export interface Collection {
@@ -38,36 +37,6 @@ export interface Collection {
   owned_volumes: number[];
   created_at: string;
   updated_at: string;
-}
-
-export interface WishlistItem {
-  id: string;
-  title: string;
-  authors: string[];
-  cover_url?: string;
-  series_index?: number;
-  isbn?: string;
-  claimed_by_name?: string;
-  claimed_at?: string;
-}
-
-export interface Wishlist {
-  id: string;
-  collection_id: string;
-  collection_name: string;
-  owner_name: string;
-  missing_items: WishlistItem[];
-  created_at: string;
-}
-
-export interface SharedLibrary {
-  wishlist_id: string;
-  collection_name: string;
-  owner_name: string;
-  shared_at: string;
-  missing_count: number;
-  claimed_count: number;
-  cover_url?: string;
 }
 
 // ─── API response ─────────────────────────────────────────────────────────────
@@ -85,7 +54,7 @@ export interface LookupResult {
   series_index?: number;
   book_type: BookType;
   _unreliable?: boolean;
-  _createCollection?: boolean; // true only if a collection should be auto-created (saga or prolific author)
+  _createCollection?: boolean;
 }
 
 export interface ScanResult {
