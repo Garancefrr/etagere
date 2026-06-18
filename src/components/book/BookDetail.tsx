@@ -24,8 +24,8 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
   const [showDrop,    setShowDrop]     = useState(false);
   const [confirmDel,  setConfirmDel]   = useState(false);
 
-  const handleSave = () => {
-    onUpdate(book.id, {
+  const handleSave = async () => {
+    await onUpdate(book.id, {
       status, book_type: bookType,
       rating: rating || undefined,
       note: note || undefined,

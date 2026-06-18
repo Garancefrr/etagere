@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProfileId } from "@/lib/auth";
-import { insertBook } from "@/lib/db";
+import { insertBook, getBooks } from "@/lib/db";
+import { resolveUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    if (!body.library_id) return NextResponse.json({ error: "library_id manquant" }, { status: 400 });
+    if (!body.title) return NextResponse.json({ error: "titre manquant" }, { status: 400 });
+
+    // Fix #5: Validate library ownership
+    if (body.email) {
+      const user = await resolveUser(body.email);
+      if (user && user.library_id !== body.library_id) {
+        return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+      }
+    }
+
+    // Fix #3: Dedup check — reject if same ISBN or title already exists
+    const existing = await getBooks(body.library_id).catch(() => []);
+    const isbn = body.isbn?.replace(/[^0-9X]/gi, "");
+    if (isbn && existing.some(b => b.isbn === isbn)) {
+      return NextResponse.json({ error: "Ce livre est déjà dans ta bibliothèque (ISBN identique)" }, { status: 409 });
+    }
+    if (existing.some(b => b.title.toLowerCase().trim() === (body.title ?? "").toLowerCase().trim())) {
+      return NextResponse.json({ error: "Ce livre est déjà dans ta bibliothèque (titre identique)" }, { status: 409 });
+    }
 
     // Resolve added_by from email
     let addedBy: string | undefined;
@@ -12,10 +33,9 @@ export async function POST(req: NextRequest) {
       addedBy = (await getProfileId(body.email)) ?? undefined;
     }
 
-    // Whitelist only valid DB columns — no extra fields
     const bookData: Record<string, any> = {
       library_id:     body.library_id,
-      isbn:           body.isbn,
+      isbn:           isbn || null,
       title:          body.title,
       authors:        body.authors ?? [],
       cover_url:      body.cover_url || null,

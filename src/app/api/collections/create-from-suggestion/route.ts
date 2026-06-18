@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { insertCollection, patchBook } from "@/lib/db";
+import { insertCollection, patchBook, findCollection } from "@/lib/db";
 import { BookType } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
     const { library_id, name, author, book_type, cover_url, books } = await req.json();
     if (!library_id || !name) return NextResponse.json({ error: "Paramètres manquants" }, { status: 400 });
+
+    // Check if collection already exists
+    const existing = await findCollection(library_id, name);
+    if (existing) return NextResponse.json({ collection: existing, books_updated: 0 });
 
     // Get volume count for series
     // Deduplicate owned volumes

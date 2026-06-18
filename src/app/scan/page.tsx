@@ -247,7 +247,7 @@ function IsbnPanel({ libraryId, userEmail, collections, rapidMode, onSuccess, on
         <div className="border-t mx-0 px-4 py-4 flex flex-col gap-3" style={{ borderColor: "var(--border)" }}>
           <div className="flex gap-3 items-center">
             {found.book.cover_url
-              ? <img src={found.book.cover_url} alt={found.book.title} className="rounded-lg flex-shrink-0" style={{ width: 48, height: 68, objectFit: "cover" }} />
+              ? <Cover src={found.book.cover_url} alt={found.book.title} width={48} height={68} className="rounded-lg flex-shrink-0" />
               : <div className="rounded-lg flex-shrink-0 flex items-center justify-center" style={{ width: 48, height: 68, background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 20 }}>
                   {found.book.book_type === "bd" ? "🎨" : found.book.book_type === "manga" ? "⛩️" : "📖"}
                 </div>
@@ -314,7 +314,7 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
       let collectionName, isNew;
       if (book.series_name && book.series_index) {
         const colRes = await fetch(
-          `/api/collections/resolve?library_id=${libraryId}&series_name=${encodeURIComponent(book.series_name)}&series_index=${book.series_index}&book_type=livre`
+          `/api/collections/resolve?library_id=${libraryId}&series_name=${encodeURIComponent(book.series_name)}&series_index=${book.series_index}&book_type=${book.book_type || "livre"}`
         );
         if (colRes.ok) { const c = await colRes.json(); collectionName = c.collection?.name; isNew = c.isNew; }
       }
@@ -325,7 +325,7 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
           authors: book.authors, cover_url: book.cover_url,
           publisher: book.publisher, published_year: book.published_year,
           page_count: book.page_count, description: book.description,
-          book_type: "livre", status: "a_lire",
+          book_type: book.book_type || "livre", status: "a_lire",
           series_name: book.series_name || null,
           series_index: book.series_index || null,
           library_id: libraryId, email: userEmail,

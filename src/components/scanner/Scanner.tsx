@@ -16,7 +16,6 @@ interface Props {
   libraryId: string;
   userEmail: string;
   collections: Collection[];
-  startWithKeyboard?: boolean;
   onSuccess: (saved: SavedBook) => void;
   onClose: () => void;
 }
@@ -102,7 +101,7 @@ function EditForm({
 }
 
 // ── Main Scanner ───────────────────────────────────────────────────────────────
-export default function Scanner({ rapidMode, libraryId, userEmail, collections, startWithKeyboard, onSuccess, onClose }: Props) {
+export default function Scanner({ rapidMode, libraryId, userEmail, collections, onSuccess, onClose }: Props) {
   const videoRef      = useRef<HTMLVideoElement>(null);
   const processingRef = useRef(false);
 
@@ -112,7 +111,7 @@ export default function Scanner({ rapidMode, libraryId, userEmail, collections, 
   const [status,      setStatus]      = useState<ReadStatus>("a_lire");
   const [bookType,    setBookType]    = useState<BookType>("livre");
   const [manual,      setManual]      = useState("");
-  const [showKbd,     setShowKbd]     = useState(startWithKeyboard ?? false);
+  const [showKbd,     setShowKbd]     = useState(false);
   const [needsCheck,  setNeedsCheck]  = useState(false);
   const [isNonIsbnEan, setIsNonIsbnEan] = useState(false);
 

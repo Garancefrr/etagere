@@ -17,14 +17,12 @@ export default function StatsPage() {
     const ratings = lu.filter(b => b.rating).map(b => b.rating!);
     const avg     = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : null;
     const finishedThisYear = lu.filter(b => {
-      const d = b.finished_at ?? b.updated_at;
-      return d && new Date(d).getFullYear() === thisYear;
+      return b.finished_at && new Date(b.finished_at).getFullYear() === thisYear;
     });
     const addedThisYear = books.filter(b => new Date(b.added_at).getFullYear() === thisYear);
     const byMonth: number[] = Array(12).fill(0);
     lu.forEach(b => {
-      const d = b.finished_at ?? b.updated_at;
-      if (d && new Date(d).getFullYear() === thisYear) byMonth[new Date(d).getMonth()]++;
+      if (b.finished_at && new Date(b.finished_at).getFullYear() === thisYear) byMonth[new Date(b.finished_at).getMonth()]++;
     });
     const bestMonthIdx = byMonth.indexOf(Math.max(...byMonth));
     const bestMonth = byMonth[bestMonthIdx] > 0 ? { name: monthName(bestMonthIdx), count: byMonth[bestMonthIdx] } : null;
