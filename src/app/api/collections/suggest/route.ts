@@ -42,11 +42,12 @@ export async function GET(req: NextRequest) {
   }
 
   for (const seriesBooks of Object.values(bySeriesName)) {
-    const first = seriesBooks[0];
-    // Deduplicate books within the suggestion by ID
     const uniqueBooks = seriesBooks.filter((b, idx, arr) =>
       arr.findIndex(x => x.id === b.id) === idx
     );
+    // Only suggest if 2+ books in the series
+    if (uniqueBooks.length < 2) continue;
+    const first = seriesBooks[0];
     uniqueBooks.forEach(b => usedBookIds.add(b.id));
     suggestions.push({
       type: "series",

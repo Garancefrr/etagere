@@ -100,12 +100,12 @@ export default function SuggestModal({ libraryId, onClose, onCreated }: Props) {
 
           {!loading && suggestions.length === 0 && (
             <div className="flex flex-col items-center py-12 gap-3">
-              <span style={{ fontSize: 40 }}>🎉</span>
-              <p className="font-semibold" style={{ fontSize: 16, color: "var(--txt1)" }}>
-                Tout est déjà organisé !
+              <span style={{ fontSize: 40 }}>📚</span>
+              <p className="font-semibold text-center" style={{ fontSize: 16, color: "var(--txt1)" }}>
+                Pas de suggestion pour le moment
               </p>
-              <p className="text-center" style={{ fontSize: 14, color: "var(--txt3)" }}>
-                Aucune collection manquante détectée dans ta bibliothèque.
+              <p className="text-center px-4" style={{ fontSize: 14, color: "var(--txt3)", lineHeight: 1.5 }}>
+                Continue à ajouter des livres ! Des collections seront proposées dès que des séries ou des auteurs récurrents seront détectés.
               </p>
             </div>
           )}
