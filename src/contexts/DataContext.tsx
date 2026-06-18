@@ -70,6 +70,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const loading = libLoading || !dataLoaded;
 
+
+  // Silent auto-enrichment: fetch missing descriptions (10 per page load)
+  useEffect(() => {
+    if (!library_id || books.length === 0) return;
+    const missing = books.filter(b => !b.description).length;
+    if (missing === 0) return;
+    // Debounce: don't run on every re-render
+    const timer = setTimeout(() => {
+      fetch("/api/books/refresh-descriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ library_id, limit: 10 }),
+      }).then(() => {
+        // Silently refresh to show new descriptions
+        refreshAll();
+      }).catch(() => {});
+    }, 5000); // Wait 5s after page load
+    return () => clearTimeout(timer);
+  }, [library_id, books.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <DataContext.Provider value={{ books, collections, loading, refreshBooks, refreshCollections, refreshAll, setBooks, setCollections, library_id, email }}>
       {children}

@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { insertBook, resolveCollection } from "@/lib/db";
 import { getProfileId } from "@/lib/auth";
 import { searchCoverByTitle } from "@/lib/cover-utils";
+import { searchDescription } from "@/lib/description-utils";
 
 const BATCH_SIZE = 5; // books per poll
 
@@ -42,9 +43,16 @@ export async function GET(req: NextRequest) {
             cover = await searchCoverByTitle(row.title, row.series_name);
           } catch { /* skip cover */ }
 
+          // Also fetch description
+          let description: string | null = null;
+          try {
+            description = await searchDescription(row.title, row.authors ?? [], row.isbn);
+          } catch { /* skip */ }
+
           await insertBook({
             library_id: job.library_id, isbn: row.isbn, title: row.title,
             authors: row.authors ?? [], cover_url: cover ?? undefined,
+            description: description ?? undefined,
             publisher: row.publisher, published_year: row.published_year,
             book_type: row.book_type ?? "livre", status: row.status ?? "a_lire",
             series_name: row.series_name, series_index: row.series_index,

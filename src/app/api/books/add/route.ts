@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProfileId } from "@/lib/auth";
 import { insertBook, getBooks } from "@/lib/db";
+import { searchDescription } from "@/lib/description-utils";
 import { resolveUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
@@ -33,6 +34,12 @@ export async function POST(req: NextRequest) {
       addedBy = (await getProfileId(body.email)) ?? undefined;
     }
 
+    // Auto-fetch description if not provided
+    let description = body.description || null;
+    if (!description) {
+      description = await searchDescription(body.title, body.authors ?? [], body.isbn).catch(() => null);
+    }
+
     const bookData: Record<string, any> = {
       library_id:     body.library_id,
       isbn:           isbn || null,
@@ -42,7 +49,7 @@ export async function POST(req: NextRequest) {
       publisher:      body.publisher || null,
       published_year: body.published_year || null,
       page_count:     body.page_count || null,
-      description:    body.description || null,
+      description:    description,
       book_type:      body.book_type ?? "livre",
       status:         body.status ?? "a_lire",
       series_name:    body.series_name || null,
