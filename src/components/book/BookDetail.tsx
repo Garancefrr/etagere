@@ -70,6 +70,13 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
             </div>
           </div>
 
+          {/* Description under header */}
+          {book.description && (
+            <div className="px-5 -mt-1 mb-2">
+              <p className="text-xs leading-relaxed line-clamp-4" style={{ color: "var(--txt3)" }}>{book.description}</p>
+            </div>
+          )}
+
           <div className="px-5 pb-6 space-y-5">
             {/* Collection */}
             <Section label="Collection">
@@ -161,13 +168,6 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
                 rows={3} className="w-full p-3 rounded-xl text-sm resize-none outline-none"
                 style={{ background: "var(--surface2)", color: "var(--txt1)", border: "1px solid var(--border)", fontFamily: "inherit" }} />
             </Section>
-
-            {/* Description */}
-            {book.description && (
-              <Section label="Résumé">
-                <p className="text-sm leading-relaxed line-clamp-4" style={{ color: "var(--txt2)" }}>{book.description}</p>
-              </Section>
-            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-1">
