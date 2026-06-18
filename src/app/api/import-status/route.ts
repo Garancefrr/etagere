@@ -8,20 +8,25 @@ const BATCH_SIZE = 5;
 
 async function quickCover(title: string, isbn?: string | null): Promise<string | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
-  const keyParam = apiKey ? `&key=${apiKey}` : "";
   const q = isbn ? `isbn:${isbn}` : `intitle:${encodeURIComponent(title)}`;
-  try {
-    const res = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1${keyParam}`,
-      { signal: AbortSignal.timeout(2000) }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const links = data.items?.[0]?.volumeInfo?.imageLinks;
-    if (!links) return null;
-    const url = links.large ?? links.medium ?? links.thumbnail;
-    return validateCoverUrl(url);
-  } catch { return null; }
+
+  // Try with API key, then without on quota error
+  for (const key of [apiKey ? `&key=${apiKey}` : "", ""]) {
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1${key}`,
+        { signal: AbortSignal.timeout(2500) }
+      );
+      if (res.status === 403 || res.status === 429) continue; // quota, try without key
+      if (!res.ok) return null;
+      const data = await res.json();
+      const links = data.items?.[0]?.volumeInfo?.imageLinks;
+      if (!links) return null;
+      const url = links.large ?? links.medium ?? links.thumbnail;
+      return validateCoverUrl(url);
+    } catch { continue; }
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest) {

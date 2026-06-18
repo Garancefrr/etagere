@@ -20,10 +20,11 @@ export async function POST(req: NextRequest) {
       if (dup) return NextResponse.json({ error: "Ce livre est déjà dans ta bibliothèque" }, { status: 409 });
     }
 
-    // Dedup by title
+    // Dedup by title (exact match, case-insensitive)
     const { data: dupTitle } = await db.from("books")
       .select("id").eq("library_id", body.library_id)
       .ilike("title", body.title.trim())
+      .limit(1)
       .maybeSingle();
     if (dupTitle) return NextResponse.json({ error: "Ce livre est déjà dans ta bibliothèque" }, { status: 409 });
 
