@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { id, ...updates } = await req.json();
+    const { id, library_id, ...updates } = await req.json();
     if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
-    await patchCollection(id, updates);
+    await patchCollection(id, updates, library_id);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -35,9 +35,9 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const { id, library_id } = await req.json();
     if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
-    await removeCollection(id);
+    await removeCollection(id, library_id);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

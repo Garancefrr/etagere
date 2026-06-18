@@ -28,24 +28,26 @@ export async function insertBook(book: Omit<Book, "id" | "added_at" | "updated_a
   return data as Book;
 }
 
-export async function patchBook(id: string, updates: Partial<Book>): Promise<void> {
+export async function patchBook(id: string, updates: Partial<Book>, libraryId?: string): Promise<void> {
   const db = createServerClient();
   const patch: any = { ...updates, updated_at: new Date().toISOString() };
-  // Auto-set finished_at when marking as "lu"
   if (updates.status === "lu" && !updates.finished_at) {
     patch.finished_at = new Date().toISOString();
   }
-  // Clear finished_at if un-marking as lu
   if (updates.status && updates.status !== "lu") {
     patch.finished_at = null;
   }
-  const { error } = await db.from("books").update(patch).eq("id", id);
+  let query = db.from("books").update(patch).eq("id", id);
+  if (libraryId) query = query.eq("library_id", libraryId);
+  const { error } = await query;
   if (error) throw error;
 }
 
-export async function removeBook(id: string): Promise<void> {
+export async function removeBook(id: string, libraryId?: string): Promise<void> {
   const db = createServerClient();
-  const { error } = await db.from("books").delete().eq("id", id);
+  let query = db.from("books").delete().eq("id", id);
+  if (libraryId) query = query.eq("library_id", libraryId);
+  const { error } = await query;
   if (error) throw error;
 }
 
@@ -182,15 +184,19 @@ export async function getSharedWithMe(viewerId: string): Promise<SharedWithMe[]>
   }));
 }
 
-export async function patchCollection(id: string, updates: Partial<Collection>): Promise<void> {
+export async function patchCollection(id: string, updates: Partial<Collection>, libraryId?: string): Promise<void> {
   const db = createServerClient();
-  const { error } = await db.from("collections")
+  let query = db.from("collections")
     .update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
+  if (libraryId) query = query.eq("library_id", libraryId);
+  const { error } = await query;
   if (error) throw error;
 }
 
-export async function removeCollection(id: string): Promise<void> {
+export async function removeCollection(id: string, libraryId?: string): Promise<void> {
   const db = createServerClient();
-  const { error } = await db.from("collections").delete().eq("id", id);
+  let query = db.from("collections").delete().eq("id", id);
+  if (libraryId) query = query.eq("library_id", libraryId);
+  const { error } = await query;
   if (error) throw error;
 }

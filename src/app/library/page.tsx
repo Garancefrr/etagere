@@ -84,7 +84,7 @@ export default function LibraryPage() {
     await fetch("/api/books", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, library_id }),
     });
     setBooks(prev => prev.filter(b => b.id !== id));
     setSelected(null);

@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    await patchBook(id, updates);
+    await patchBook(id, updates, library_id);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -43,10 +43,9 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const { id, library_id } = await req.json();
     if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
 
-    // Get book details before deleting to sync collection
     const book = await getBook(id);
     if (book?.series_name && book.series_index && book.library_id) {
       const collection = await findCollection(book.library_id, book.series_name);
@@ -55,7 +54,7 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    await removeBook(id);
+    await removeBook(id, library_id || book?.library_id);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

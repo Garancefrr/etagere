@@ -269,13 +269,13 @@ export default function CollectionsPage() {
   };
 
   const handleEdit = async (id: string, updates: Partial<Collection>) => {
-    await fetch("/api/collections", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...updates }) });
+    await fetch("/api/collections", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, library_id, ...updates }) });
     setCollections(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
     setEditCol(null);
   };
 
   const handleDelete = async (id: string) => {
-    await fetch("/api/collections", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    await fetch("/api/collections", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, library_id }) });
     setCollections(prev => prev.filter(c => c.id !== id));
     setDeleteId(null);
   };
