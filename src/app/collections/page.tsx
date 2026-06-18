@@ -4,6 +4,7 @@ import { Collection, BookType } from "@/types";
 import { useLibrary } from "@/hooks/useLibrary";
 import { useData } from "@/contexts/DataContext";
 import CollectionCard from "@/components/collection/CollectionCard";
+import CollectionDetail from "@/components/collection/CollectionDetail";
 import SuggestModal from "@/components/collection/SuggestModal";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/Button";
@@ -252,12 +253,13 @@ function EditModal({ collection, onClose, onSave }: { collection: Collection; on
 type Filter = "all" | "bd" | "manga" | "livre";
 
 export default function CollectionsPage() {
-  const { collections, setCollections, loading: dataLoading, library_id } = useData();
+  const { collections, books, setCollections, loading: dataLoading, library_id } = useData();
   const { profile_id } = useLibrary();
   const [search,          setSearch]         = useState("");
   const [filter,          setFilter]         = useState<Filter>("all");
   const [showCreate,      setShowCreate]     = useState(false);
   const [shareCol,        setShareCol]       = useState<Collection | null>(null);
+  const [selectedCol,     setSelectedCol]    = useState<Collection | null>(null);
   const [editCol,         setEditCol]        = useState<Collection | null>(null);
   const [deleteId,        setDeleteId]       = useState<string | null>(null);
   const [showSuggest,     setShowSuggest]    = useState(false);
@@ -327,7 +329,7 @@ export default function CollectionsPage() {
         </div>
       </div>
 
-      <div className="px-4 flex flex-col gap-4">
+      <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
         {loading ? (
           <div className="flex justify-center py-20"><div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div>
         ) : filtered.length === 0 ? (
@@ -336,25 +338,7 @@ export default function CollectionsPage() {
             <Button onClick={() => setShowCreate(true)}>+ Créer une collection</Button>
           </div>
         ) : filtered.map(c => (
-          <div key={c.id}>
-            <CollectionCard collection={c} onEdit={() => setEditCol(c)} onDelete={() => setDeleteId(c.id)} />
-            {deleteId === c.id && (
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => handleDelete(c.id)} className="flex-1 py-3 rounded-2xl font-semibold"
-                  style={{ background: "var(--miss-bg)", color: "var(--miss-t)", border: "1px solid var(--miss-b)", fontSize: 13 }}>
-                  Confirmer la suppression
-                </button>
-                <button onClick={() => setDeleteId(null)} className="px-4 py-3 rounded-2xl font-semibold"
-                  style={{ background: "var(--surface)", color: "var(--txt2)", border: "1px solid var(--border)", fontSize: 13 }}>
-                  Annuler
-                </button>
-              </div>
-            )}
-            <button onClick={() => setShareCol(c)} className="w-full mt-2 py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 active:scale-95"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt2)", fontSize: 13 }}>
-              <Share2 className="w-4 h-4" style={{ color: "var(--accent)" }} /> Partager
-            </button>
-          </div>
+          <CollectionCard key={c.id} collection={c} onClick={() => setSelectedCol(c)} />
         ))}
       </div>
 
@@ -371,6 +355,16 @@ export default function CollectionsPage() {
                 .catch(console.error);
             }
           }}
+        />
+      )}
+      {selectedCol && (
+        <CollectionDetail
+          collection={selectedCol}
+          books={books}
+          onClose={() => setSelectedCol(null)}
+          onEdit={() => { setEditCol(selectedCol); setSelectedCol(null); }}
+          onDelete={() => { handleDelete(selectedCol.id); setSelectedCol(null); }}
+          onShare={() => { setShareCol(selectedCol); setSelectedCol(null); }}
         />
       )}
       {editCol && <EditModal collection={editCol} onClose={() => setEditCol(null)} onSave={handleEdit} />}
