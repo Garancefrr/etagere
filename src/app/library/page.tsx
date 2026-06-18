@@ -27,6 +27,13 @@ export default function LibraryPage() {
   const [selected,       setSelected]       = useState<Book | null>(null);
   const [showFilters,    setShowFilters]    = useState(false);
   const [refreshingCovers, setRefreshingCovers] = useState(false);
+  const [refreshing,       setRefreshing]       = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   const refreshCovers = async () => {
     if (!library_id || refreshingCovers) return;
@@ -146,10 +153,12 @@ export default function LibraryPage() {
             />
           </div>
           <button
-            onClick={() => refreshAll()}
+            onClick={handleRefresh}
+            disabled={refreshing}
             className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <RefreshCw className="w-5 h-5" style={{ color: "var(--txt2)" }} />
+            style={{ background: refreshing ? "var(--accent-l)" : "var(--surface)", border: `1px solid ${refreshing ? "var(--accent)" : "var(--border)"}` }}>
+            <RefreshCw className="w-5 h-5"
+              style={{ color: refreshing ? "var(--accent)" : "var(--txt2)", animation: refreshing ? "spin 0.8s linear infinite" : "none" }} />
           </button>
           {books.some(b => !b.cover_url) && (
             <button

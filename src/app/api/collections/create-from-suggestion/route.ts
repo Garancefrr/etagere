@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
     if (!library_id || !name) return NextResponse.json({ error: "Paramètres manquants" }, { status: 400 });
 
     // Get volume count for series
-    let ownedVolumes: number[] = [];
-    books.forEach((b: any) => {
-      if (b.series_index) ownedVolumes.push(b.series_index);
-    });
+    // Deduplicate owned volumes
+    const volumeSet = new Set<number>();
+    books.forEach((b: any) => { if (b.series_index) volumeSet.add(b.series_index); });
+    let ownedVolumes: number[] = Array.from(volumeSet).sort((a, b) => a - b);
     if (ownedVolumes.length === 0) {
       // Author collection: use sequential numbers
       ownedVolumes = books.map((_: any, i: number) => i + 1);

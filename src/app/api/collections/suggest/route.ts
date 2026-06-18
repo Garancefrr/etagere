@@ -39,13 +39,21 @@ export async function GET(req: NextRequest) {
 
   for (const [key, seriesBooks] of Object.entries(bySeriesName)) {
     const first = seriesBooks[0];
+    // Deduplicate by series_index (keep only one book per tome number)
+    const seen = new Set<number>();
+    const dedupedBooks = seriesBooks.filter(b => {
+      if (!b.series_index) return true;
+      if (seen.has(b.series_index)) return false;
+      seen.add(b.series_index);
+      return true;
+    });
     suggestions.push({
       type: "series",
       name: first.series_name!,
-      cover_url: seriesBooks.find(b => b.cover_url)?.cover_url,
+      cover_url: dedupedBooks.find(b => b.cover_url)?.cover_url,
       author: first.authors[0],
       book_type: first.book_type,
-      books: seriesBooks.map(b => ({ id: b.id, title: b.title, series_index: b.series_index })),
+      books: dedupedBooks.map(b => ({ id: b.id, title: b.title, series_index: b.series_index })),
     });
   }
 
