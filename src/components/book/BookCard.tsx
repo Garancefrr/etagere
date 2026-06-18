@@ -2,7 +2,7 @@
 import { Book } from "@/types";
 import { STATUS_CONFIG, TYPE_CONFIG } from "@/lib/constants";
 import { Cover } from "@/components/ui/Cover";
-import { Star, Layers } from "lucide-react";
+import { Star } from "lucide-react";
 
 interface Props {
   book: Book;
@@ -23,22 +23,27 @@ export default function BookCard({ book, onClick }: Props) {
       <div className="relative w-full" style={{ aspectRatio: "2/3" }}>
         <Cover src={book.cover_url} alt={book.title} className="w-full h-full" />
 
+        {/* Status bar */}
         <span className="absolute bottom-0 left-0 right-0 text-center"
           style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: "3px 0" }}>
           {label}
         </span>
 
+        {/* Type emoji */}
         <span className="absolute top-1.5 right-1.5" style={{ fontSize: 11 }}>
           {emoji}
         </span>
 
-        {/* Collection tag */}
+        {/* Collection tag — compact, top-left */}
         {book.series_name && (
-          <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md"
-            style={{ background: "rgba(91,122,255,0.85)", fontSize: 8, fontWeight: 700, color: "#fff" }}>
-            <Layers style={{ width: 8, height: 8 }} />
-            {book.series_name.length > 10 ? book.series_name.slice(0, 10) + "…" : book.series_name}
-          </span>
+          <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 rounded-md px-1 py-0.5 max-w-[65%]"
+            style={{ background: "rgba(10,13,31,0.75)", backdropFilter: "blur(4px)" }}>
+            <span style={{ fontSize: 7 }}>📚</span>
+            <span className="truncate" style={{ fontSize: 7, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>
+              {book.series_name.length > 12 ? book.series_name.slice(0, 12) + "…" : book.series_name}
+              {book.series_index ? ` #${book.series_index}` : ""}
+            </span>
+          </div>
         )}
       </div>
 
@@ -47,11 +52,11 @@ export default function BookCard({ book, onClick }: Props) {
         <p className="font-semibold line-clamp-2" style={{ fontSize: 12, color: "var(--txt1)", lineHeight: 1.3 }}>
           {book.title}
         </p>
-        <p className="truncate mt-1" style={{ fontSize: 11, color: "var(--txt2)" }}>
+        <p className="truncate mt-0.5" style={{ fontSize: 11, color: "var(--txt2)" }}>
           {book.authors[0]}
         </p>
         {book.rating && (
-          <div className="flex gap-0.5 mt-1.5">
+          <div className="flex gap-0.5 mt-1">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} style={{
                 width: 9, height: 9,
