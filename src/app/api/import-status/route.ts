@@ -2,8 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { insertBook, resolveCollection } from "@/lib/db";
 import { getProfileId } from "@/lib/auth";
+import { validateCoverUrl } from "@/lib/cover-utils";
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 5;
+
+async function quickCover(title: string, isbn?: string | null): Promise<string | null> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY ?? "";
+  const keyParam = apiKey ? `&key=${apiKey}` : "";
+  const q = isbn ? `isbn:${isbn}` : `intitle:${encodeURIComponent(title)}`;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1${keyParam}`,
+      { signal: AbortSignal.timeout(2000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const links = data.items?.[0]?.volumeInfo?.imageLinks;
+    if (!links) return null;
+    const url = links.large ?? links.medium ?? links.thumbnail;
+    return validateCoverUrl(url);
+  } catch { return null; }
+}
 
 export async function GET(req: NextRequest) {
   const job_id = req.nextUrl.searchParams.get("job_id");
@@ -24,7 +43,14 @@ export async function GET(req: NextRequest) {
           status: "done", progress: 100, rows_data: null,
           updated_at: new Date().toISOString(),
         }).eq("id", job_id);
-        return NextResponse.json({ ...job, status: "done", progress: 100, rows_data: undefined });
+        return NextResponse.json({ ...job, status: "done", progress: 100 });
+      }
+
+      // Verify library exists
+      const { data: lib } = await db.from("libraries").select("id").eq("id", job.library_id).maybeSingle();
+      if (!lib) {
+        await db.from("import_jobs").update({ status: "error", updated_at: new Date().toISOString() }).eq("id", job_id);
+        return NextResponse.json({ status: "error", error: "Bibliothèque introuvable — reconnectez-vous et relancez l'import", progress: 0, imported: 0, errors: 0, skipped: 0, total: job.total ?? 0 });
       }
 
       const profileId = await getProfileId(job.email).catch(() => null);
@@ -34,19 +60,29 @@ export async function GET(req: NextRequest) {
 
       for (const row of batch) {
         try {
+          // Fetch cover with short timeout — don't block if slow
+          const cover = await quickCover(row.title, row.isbn).catch(() => null);
+
           await insertBook({
-            library_id: job.library_id, isbn: row.isbn, title: row.title,
-            authors: row.authors ?? [], cover_url: undefined,
-            publisher: row.publisher, published_year: row.published_year,
-            book_type: row.book_type ?? "livre", status: row.status ?? "a_lire",
-            series_name: row.series_name, series_index: row.series_index,
-            rating: row.rating, description: undefined,
-            added_by: profileId ?? null,
+            library_id:     job.library_id,
+            isbn:           row.isbn ?? null,
+            title:          row.title,
+            authors:        row.authors ?? [],
+            cover_url:      cover,
+            publisher:      row.publisher ?? null,
+            published_year: row.published_year ?? null,
+            book_type:      row.book_type ?? "livre",
+            status:         row.status ?? "a_lire",
+            series_name:    row.series_name ?? null,
+            series_index:   row.series_index ?? null,
+            rating:         row.rating ?? null,
+            description:    null,
+            added_by:       profileId ?? null,
           } as any);
 
           if (row.series_name && row.series_index && (row.book_type === "bd" || row.book_type === "manga")) {
             await resolveCollection(job.library_id, row.series_name, row.series_index, {
-              author: row.authors?.[0], book_type: row.book_type
+              cover_url: cover ?? undefined, author: row.authors?.[0], book_type: row.book_type
             }).catch(() => null);
           }
           imported++;
@@ -77,7 +113,7 @@ export async function GET(req: NextRequest) {
       });
     } catch (e: any) {
       console.error("Import batch error:", e);
-      return NextResponse.json({ ...job, rows_data: undefined });
+      return NextResponse.json({ status: "error", error: e.message });
     }
   }
 

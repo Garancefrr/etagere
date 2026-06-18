@@ -99,8 +99,16 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
           }
         });
 
-        // Sort: by series_index if available, then by title
+        // Sort: owned first (en_cours > a_lire > lu > non possédé), then by series_index or title
+        const statusOrder = (b: RemoteBook) => {
+          if (!b.owned) return 4;
+          if (b.owned.status === "en_cours") return 0;
+          if (b.owned.status === "a_lire")   return 1;
+          return 2; // lu
+        };
         mapped.sort((a, b) => {
+          const so = statusOrder(a) - statusOrder(b);
+          if (so !== 0) return so;
           if (a.series_index && b.series_index) return a.series_index - b.series_index;
           if (a.series_index) return -1;
           if (b.series_index) return 1;
