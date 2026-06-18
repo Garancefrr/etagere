@@ -291,11 +291,13 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
   const [searching,  setSearching]  = useState(false);
   const [selected,   setSelected]   = useState<any | null>(null);
   const [saving,     setSaving]     = useState(false);
+  const [addError,   setAddError]   = useState("");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleQuery = (v: string) => {
     setQuery(v);
     setSelected(null);
+    setAddError("");
     if (timerRef.current) clearTimeout(timerRef.current);
     if (v.length < 2) { setResults([]); return; }
     setSearching(true);
@@ -310,6 +312,7 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
 
   const doAdd = async (book: any) => {
     setSaving(true);
+    setAddError("");
     try {
       let collectionName, isNew;
       if (book.series_name && book.series_index) {
@@ -331,8 +334,18 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
           library_id: libraryId, email: userEmail,
         }),
       });
-      if (res.ok) onSuccess({ title: book.title, collection_name: collectionName, is_new_collection: isNew });
-    } finally { setSaving(false); }
+      if (res.status === 409) {
+        setAddError("Ce livre est déjà dans ta bibliothèque");
+        return;
+      }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setAddError(d.error ?? "Erreur lors de l'ajout");
+        return;
+      }
+      onSuccess({ title: book.title, collection_name: collectionName, is_new_collection: isNew });
+    } catch { setAddError("Erreur réseau"); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -398,14 +411,17 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
             </button>
           </div>
           <div className="px-4 pb-4">
-            <button onClick={() => doAdd(selected)} disabled={saving}
-              className="w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2"
-              style={{ background: "var(--accent)", color: "#fff", fontSize: 15 }}>
-              {saving
-                ? <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
-                : <><Check className="w-5 h-5" /> Ajouter à ma bibliothèque</>}
-            </button>
-          </div>
+              {addError && (
+                <p className="text-xs mb-2 text-center" style={{ color: "var(--miss-t)" }}>{addError}</p>
+              )}
+              <button onClick={() => doAdd(selected)} disabled={saving}
+                className="w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2"
+                style={{ background: "var(--accent)", color: "#fff", fontSize: 15 }}>
+                {saving
+                  ? <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
+                  : <><Check className="w-5 h-5" /> Ajouter à ma bibliothèque</>}
+              </button>
+            </div>
         </div>
       )}
 
