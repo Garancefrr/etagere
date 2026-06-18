@@ -6,6 +6,7 @@ import { useData } from "@/contexts/DataContext";
 import CollectionCard from "@/components/collection/CollectionCard";
 import CollectionDetail from "@/components/collection/CollectionDetail";
 import SuggestModal from "@/components/collection/SuggestModal";
+import AuthorView from "@/components/collection/AuthorView";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { Cover } from "@/components/ui/Cover";
@@ -263,6 +264,7 @@ export default function CollectionsPage() {
   const [editCol,         setEditCol]        = useState<Collection | null>(null);
   const [deleteId,        setDeleteId]       = useState<string | null>(null);
   const [showSuggest,     setShowSuggest]    = useState(false);
+  const [activeTab,       setActiveTab]      = useState<"series" | "authors">("series");
 
   const handleCreate = async (data: Partial<Collection>) => {
     if (!library_id) return;
@@ -301,46 +303,65 @@ export default function CollectionsPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Collections</p>
-            <h1 className="font-bold" style={{ fontSize: 26, color: "var(--txt1)" }}>{collections.length} <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.35 }}>séries</span></h1>
+            <h1 className="font-bold" style={{ fontSize: 26, color: "var(--txt1)" }}>
+              {activeTab === "series" ? <>{collections.length} <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.35 }}>séries</span></> : <>Auteurs</>}
+            </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowSuggest(true)}
-              className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-              title="Suggérer des collections">
-              <Sparkles className="w-5 h-5" style={{ color: "var(--accent)" }} />
-            </button>
-            <button onClick={() => setShowCreate(true)} className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95" style={{ background: "var(--accent)" }}>
-              <Plus className="w-5 h-5 text-white" />
-            </button>
+            {activeTab === "series" && <>
+              <button onClick={() => setShowSuggest(true)}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <Sparkles className="w-5 h-5" style={{ color: "var(--accent)" }} />
+              </button>
+              <button onClick={() => setShowCreate(true)} className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95" style={{ background: "var(--accent)" }}>
+                <Plus className="w-5 h-5 text-white" />
+              </button>
+            </>}
           </div>
         </div>
-        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl mb-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <Search className="w-5 h-5" style={{ color: "var(--txt3)" }} />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="flex-1 outline-none bg-transparent" style={{ color: "var(--txt1)", fontSize: 15 }} />
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {(["all","livre","bd","manga"] as Filter[]).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className="flex-shrink-0 px-4 py-2 rounded-full font-semibold"
-              style={{ fontSize: 13, background: filter === f ? "var(--accent)" : "var(--surface)", color: filter === f ? "#fff" : "var(--txt2)", border: `1px solid ${filter === f ? "var(--accent)" : "var(--border)"}` }}>
-              {f === "all" ? "Toutes" : f === "livre" ? "📖 Livres" : f === "bd" ? "🎨 BD" : "⛩️ Manga"}
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 rounded-2xl mb-3" style={{ background: "var(--surface)" }}>
+          {([["series", "📚 Séries"], ["authors", "✍️ Auteurs"]] as const).map(([tab, label]) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className="flex-1 py-2.5 rounded-xl font-semibold"
+              style={{ fontSize: 13, background: activeTab === tab ? "var(--accent)" : "transparent", color: activeTab === tab ? "#fff" : "var(--txt2)" }}>
+              {label}
             </button>
           ))}
         </div>
+        {activeTab === "series" && <>
+          <div className="flex items-center gap-2 px-4 py-3 rounded-2xl mb-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <Search className="w-5 h-5" style={{ color: "var(--txt3)" }} />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="flex-1 outline-none bg-transparent" style={{ color: "var(--txt1)", fontSize: 15 }} />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            {(["all","livre","bd","manga"] as Filter[]).map(f => (
+              <button key={f} onClick={() => setFilter(f)} className="flex-shrink-0 px-4 py-2 rounded-full font-semibold"
+                style={{ fontSize: 13, background: filter === f ? "var(--accent)" : "var(--surface)", color: filter === f ? "#fff" : "var(--txt2)", border: `1px solid ${filter === f ? "var(--accent)" : "var(--border)"}` }}>
+                {f === "all" ? "Toutes" : f === "livre" ? "📖 Livres" : f === "bd" ? "🎨 BD" : "⛩️ Manga"}
+              </button>
+            ))}
+          </div>
+        </>}
       </div>
 
-      <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
-        {loading ? (
-          <div className="flex justify-center py-20"><div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-20 gap-4">
-            <p className="font-semibold" style={{ fontSize: 17, color: "var(--txt1)" }}>Aucune collection</p>
-            <Button onClick={() => setShowCreate(true)}>+ Créer une collection</Button>
-          </div>
-        ) : filtered.map(c => (
-          <CollectionCard key={c.id} collection={c} onClick={() => setSelectedCol(c)} />
-        ))}
-      </div>
+      {activeTab === "series" ? (
+        <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+          {loading ? (
+            <div className="flex justify-center py-20"><div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center py-20 gap-4">
+              <p className="font-semibold" style={{ fontSize: 17, color: "var(--txt1)" }}>Aucune collection</p>
+              <Button onClick={() => setShowCreate(true)}>+ Créer une collection</Button>
+            </div>
+          ) : filtered.map(c => (
+            <CollectionCard key={c.id} collection={c} onClick={() => setSelectedCol(c)} />
+          ))}
+        </div>
+      ) : (
+        <AuthorView books={books} />
+      )}
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       {showSuggest && library_id && (
