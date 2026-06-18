@@ -30,8 +30,16 @@ export async function insertBook(book: Omit<Book, "id" | "added_at" | "updated_a
 
 export async function patchBook(id: string, updates: Partial<Book>): Promise<void> {
   const db = createServerClient();
-  const { error } = await db.from("books")
-    .update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
+  const patch: any = { ...updates, updated_at: new Date().toISOString() };
+  // Auto-set finished_at when marking as "lu"
+  if (updates.status === "lu" && !updates.finished_at) {
+    patch.finished_at = new Date().toISOString();
+  }
+  // Clear finished_at if un-marking as lu
+  if (updates.status && updates.status !== "lu") {
+    patch.finished_at = null;
+  }
+  const { error } = await db.from("books").update(patch).eq("id", id);
   if (error) throw error;
 }
 
@@ -67,10 +75,10 @@ export async function insertCollection(col: Omit<Collection, "id" | "created_at"
 
 export async function addVolumeToCollection(id: string, currentVolumes: number[], newVolume: number): Promise<void> {
   const db = createServerClient();
-  const merged  = currentVolumes.includes(newVolume) ? currentVolumes : [...currentVolumes, newVolume];
-  const volumes = merged.sort((a, b) => a - b);
+  // Deduplicate — use Set to prevent duplicates
+  const merged = Array.from(new Set([...currentVolumes, newVolume])).sort((a, b) => a - b);
   const { error } = await db.from("collections")
-    .update({ owned_volumes: volumes, updated_at: new Date().toISOString() }).eq("id", id);
+    .update({ owned_volumes: merged, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) throw error;
 }
 

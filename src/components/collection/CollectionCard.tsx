@@ -11,7 +11,7 @@ interface Props {
 
 export default function CollectionCard({ collection, onEdit, onDelete }: Props) {
   const { emoji } = TYPE_CONFIG[collection.book_type] ?? { emoji: "📖" };
-  const owned = (collection.owned_volumes ?? []).sort((a, b) => a - b);
+  const owned = Array.from(new Set(collection.owned_volumes ?? [])).sort((a, b) => a - b);
   const total = collection.total_volumes ?? 0;
   const pct   = total > 0 ? Math.round((owned.length / total) * 100) : 0;
 
