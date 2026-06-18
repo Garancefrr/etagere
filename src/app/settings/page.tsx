@@ -7,14 +7,29 @@ import { useTheme } from "@/components/layout/ThemeProvider";
 import { Toggle } from "@/components/ui/Toggle";
 import { Cover } from "@/components/ui/Cover";
 import { SharedWithMe } from "@/lib/db";
-import { Moon, LogOut, ChevronRight, Gift, BookOpen, Upload } from "lucide-react";
+import { Moon, LogOut, ChevronRight, Gift, BookOpen, Upload, FileText } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
   const { data: session }         = useSession();
   const { email }                 = useLibrary();
   const { theme, toggle }         = useTheme();
+  const [refreshingDesc, setRefreshingDesc] = useState(false);
   const [shared, setShared]       = useState<SharedWithMe[]>([]);
+
+  const refreshDescriptions = async () => {
+    if (!email || refreshingDesc) return;
+    setRefreshingDesc(true);
+    try {
+      const libRes = await fetch(`/api/library?email=${encodeURIComponent(email)}`);
+      const { id: library_id } = await libRes.json();
+      await fetch("/api/books/refresh-descriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ library_id }),
+      });
+    } finally { setRefreshingDesc(false); }
+  };
 
   useEffect(() => {
     if (!email) return;
@@ -85,7 +100,8 @@ export default function SettingsPage() {
         <div className="px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Données</span>
         </div>
-        <Link href="/import" className="flex items-center gap-3 px-4 py-4 active:opacity-70">
+        <Link href="/import" className="flex items-center gap-3 px-4 py-4 active:opacity-70"
+          style={{ borderBottom: "1px solid var(--border)" }}>
           <Upload className="w-5 h-5 flex-shrink-0" style={{ color: "var(--accent)" }} />
           <div className="flex-1">
             <p style={{ fontSize: 15, fontWeight: 500, color: "var(--txt1)" }}>Importer depuis Babelio</p>
@@ -93,6 +109,21 @@ export default function SettingsPage() {
           </div>
           <ChevronRight className="w-4 h-4" style={{ color: "var(--txt3)" }} />
         </Link>
+        <button onClick={refreshDescriptions} disabled={refreshingDesc}
+          className="flex items-center gap-3 px-4 py-4 active:opacity-70 w-full text-left">
+          <FileText className="w-5 h-5 flex-shrink-0" style={{ color: "var(--accent)" }} />
+          <div className="flex-1">
+            <p style={{ fontSize: 15, fontWeight: 500, color: "var(--txt1)" }}>
+              {refreshingDesc ? "Recherche en cours..." : "Enrichir les résumés"}
+            </p>
+            <p style={{ fontSize: 13, color: "var(--txt2)", marginTop: 2 }}>
+              {refreshingDesc ? "Patience, cela peut prendre un moment" : "Ajouter les résumés manquants via Google Books"}
+            </p>
+          </div>
+          {refreshingDesc
+            ? <div className="w-5 h-5 rounded-full border-2 animate-spin flex-shrink-0" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+            : <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--txt3)" }} />}
+        </button>
       </div>
 
       <button onClick={() => signOut({ callbackUrl: "/login" })}
