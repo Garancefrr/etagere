@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ job_id: jobId, total: rows.length });
   } catch (e: any) {
-    console.error("Import POST error:", e);
-    return NextResponse.json({ error: e.message ?? "Erreur serveur" }, { status: 500 });
+    console.error("Import POST error:", JSON.stringify({ message: e.message, code: e.code, details: e.details }));
+    return NextResponse.json({ error: e.message ?? "Erreur serveur", code: e.code ?? null }, { status: 500 });
   }
 }

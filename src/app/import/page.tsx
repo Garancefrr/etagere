@@ -30,8 +30,9 @@ export default function ImportPage() {
       formData.append("email", email);
 
       const res = await fetch("/api/import", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Erreur serveur");
-      const { job_id, total } = await res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Erreur serveur (${res.status})`);
+      const { job_id, total } = data;
 
       // Register job for background banner
       startJob(job_id, total);
