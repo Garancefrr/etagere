@@ -4,10 +4,11 @@ import { Collection, BookType } from "@/types";
 import { useLibrary } from "@/hooks/useLibrary";
 import { useData } from "@/contexts/DataContext";
 import CollectionCard from "@/components/collection/CollectionCard";
+import SuggestModal from "@/components/collection/SuggestModal";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { Cover } from "@/components/ui/Cover";
-import { Search, Plus, X, Share2, Check, MessageCircle } from "lucide-react";
+import { Search, Plus, X, Share2, Check, MessageCircle, Sparkles } from "lucide-react";
 
 interface SeriesSuggestion {
   name: string;
@@ -259,6 +260,7 @@ export default function CollectionsPage() {
   const [shareCol,        setShareCol]       = useState<Collection | null>(null);
   const [editCol,         setEditCol]        = useState<Collection | null>(null);
   const [deleteId,        setDeleteId]       = useState<string | null>(null);
+  const [showSuggest,     setShowSuggest]    = useState(false);
 
   const handleCreate = async (data: Partial<Collection>) => {
     if (!library_id) return;
@@ -299,7 +301,17 @@ export default function CollectionsPage() {
             <p style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Collections</p>
             <h1 className="font-bold" style={{ fontSize: 26, color: "var(--txt1)" }}>{collections.length} <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.35 }}>séries</span></h1>
           </div>
-          <button onClick={() => setShowCreate(true)} className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95" style={{ background: "var(--accent)" }}><Plus className="w-5 h-5 text-white" /></button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowSuggest(true)}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+              title="Suggérer des collections">
+              <Sparkles className="w-5 h-5" style={{ color: "var(--accent)" }} />
+            </button>
+            <button onClick={() => setShowCreate(true)} className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95" style={{ background: "var(--accent)" }}>
+              <Plus className="w-5 h-5 text-white" />
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2 px-4 py-3 rounded-2xl mb-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           <Search className="w-5 h-5" style={{ color: "var(--txt3)" }} />
@@ -347,6 +359,20 @@ export default function CollectionsPage() {
       </div>
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {showSuggest && library_id && (
+        <SuggestModal
+          libraryId={library_id}
+          onClose={() => setShowSuggest(false)}
+          onCreated={() => {
+            if (library_id) {
+              fetch(`/api/collections?library_id=${library_id}`)
+                .then(r => r.json())
+                .then(d => Array.isArray(d) ? setCollections(d) : [])
+                .catch(console.error);
+            }
+          }}
+        />
+      )}
       {editCol && <EditModal collection={editCol} onClose={() => setEditCol(null)} onSave={handleEdit} />}
       {shareCol && profile_id && <ShareModal collection={shareCol} profileId={profile_id} onClose={() => setShareCol(null)} />}
       <BottomNav />
