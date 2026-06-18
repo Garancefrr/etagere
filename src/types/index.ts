@@ -24,6 +24,7 @@ export interface Book {
   added_by: string;
   added_at: string;
   updated_at: string;
+  finished_at?: string | null; // set when status becomes "lu"
 }
 
 export interface Collection {
