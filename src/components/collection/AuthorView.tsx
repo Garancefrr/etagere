@@ -14,7 +14,7 @@ interface AuthorGroup {
   cover?: string;
 }
 
-interface RemoteBook {
+interface DisplayBook {
   title: string;
   cover_url?: string | null;
   published_year?: number | null;
@@ -24,8 +24,8 @@ interface RemoteBook {
 export default function AuthorView({ books }: Props) {
   const [selected, setSelected] = useState<AuthorGroup | null>(null);
   const [search, setSearch] = useState("");
-  const [remoteBooks, setRemoteBooks] = useState<RemoteBook[]>([]);
-  const [loadingRemote, setLoadingRemote] = useState(false);
+  const [allBooks, setAllBooks] = useState<DisplayBook[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const authors: AuthorGroup[] = useMemo(() => {
     const map: Record<string, Book[]> = {};
@@ -59,26 +59,17 @@ export default function AuthorView({ books }: Props) {
 
   const openAuthor = async (a: AuthorGroup) => {
     setSelected(a);
-    setRemoteBooks([]);
-    setLoadingRemote(true);
+    setAllBooks([]);
+    setLoading(true);
 
     try {
-      const res = await fetch(`/api/books/search?q=${encodeURIComponent(a.name)}`);
-      if (!res.ok) { setLoadingRemote(false); return; }
-      const results: any[] = await res.json();
+      // Fetch ALL books by this author from Google Books
+      const res = await fetch(`/api/authors/books?author=${encodeURIComponent(a.name)}`);
+      if (!res.ok) { setLoading(false); return; }
+      const remote: any[] = await res.json();
 
-      // Filter to only this author's books
-      const authorLower = a.name.toLowerCase();
-      const authorBooks = results.filter(r =>
-        r.authors?.some((ra: string) => {
-          const raLower = ra.toLowerCase();
-          return raLower.includes(authorLower) || authorLower.includes(raLower) ||
-            raLower.includes(authorLower.split(" ").pop() ?? "");
-        })
-      );
-
-      // Map with owned books
-      const mapped: RemoteBook[] = authorBooks.map(r => ({
+      // Merge with owned books
+      const mapped: DisplayBook[] = remote.map(r => ({
         title: r.title,
         cover_url: r.cover_url,
         published_year: r.published_year,
@@ -88,7 +79,7 @@ export default function AuthorView({ books }: Props) {
         ),
       }));
 
-      // Add owned books not found in remote
+      // Add owned books not found in Google Books
       a.books.forEach(ob => {
         if (!mapped.some(m => m.owned?.id === ob.id)) {
           mapped.push({ title: ob.title, cover_url: ob.cover_url, owned: ob });
@@ -96,25 +87,29 @@ export default function AuthorView({ books }: Props) {
       });
 
       // Sort: en_cours > a_lire > lu > non possédé
-      const sortOrder = (rb: RemoteBook) => {
-        if (!rb.owned) return 4;
-        if (rb.owned.status === "en_cours") return 0;
-        if (rb.owned.status === "a_lire") return 1;
+      const sortOrder = (db: DisplayBook) => {
+        if (!db.owned) return 4;
+        if (db.owned.status === "en_cours") return 0;
+        if (db.owned.status === "a_lire") return 1;
         return 2;
       };
-      mapped.sort((a, b) => sortOrder(a) - sortOrder(b) || a.title.localeCompare(b.title));
+      mapped.sort((a, b) => {
+        const so = sortOrder(a) - sortOrder(b);
+        if (so !== 0) return so;
+        return a.title.localeCompare(b.title);
+      });
 
-      setRemoteBooks(mapped);
+      setAllBooks(mapped);
     } catch { /* ignore */ }
-    setLoadingRemote(false);
+    setLoading(false);
   };
 
-  // Author detail modal
+  // Detail modal
   if (selected) {
     const lu      = selected.books.filter(b => b.status === "lu").length;
     const enCours = selected.books.filter(b => b.status === "en_cours").length;
     const aLire   = selected.books.filter(b => b.status === "a_lire").length;
-    const displayBooks = remoteBooks.length > 0 ? remoteBooks : selected.books.map(b => ({ title: b.title, cover_url: b.cover_url, owned: b } as RemoteBook));
+    const nonPossedes = allBooks.filter(b => !b.owned).length;
 
     return (
       <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -135,10 +130,11 @@ export default function AuthorView({ books }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold truncate" style={{ fontSize: 17, color: "var(--txt1)" }}>{selected.name}</p>
-              <div className="flex gap-3 mt-1">
-                {enCours > 0 && <span style={{ fontSize: 11, color: "#A16207" }}>📖 {enCours} en cours</span>}
-                {aLire > 0   && <span style={{ fontSize: 11, color: "var(--accent)" }}>📌 {aLire} à lire</span>}
-                {lu > 0      && <span style={{ fontSize: 11, color: "var(--have-t)" }}>✅ {lu}</span>}
+              <div className="flex gap-2 mt-1 flex-wrap">
+                {enCours > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "#FEF9C3", color: "#A16207" }}>📖 {enCours} en cours</span>}
+                {aLire > 0   && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "var(--accent-l)", color: "var(--accent)" }}>📌 {aLire} à lire</span>}
+                {lu > 0      && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "var(--have-bg)", color: "var(--have-t)" }}>✅ {lu}</span>}
+                {nonPossedes > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "var(--surface2)", color: "var(--txt3)" }}>📕 {nonPossedes} manquant{nonPossedes > 1 ? "s" : ""}</span>}
               </div>
             </div>
             <button onClick={() => setSelected(null)} className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -149,20 +145,21 @@ export default function AuthorView({ books }: Props) {
 
           {/* Book list */}
           <div className="overflow-y-auto flex-1">
-            {loadingRemote && (
-              <div className="flex justify-center py-6">
+            {loading && (
+              <div className="flex flex-col items-center gap-2 py-8">
                 <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+                <p style={{ fontSize: 12, color: "var(--txt3)" }}>Recherche des livres...</p>
               </div>
             )}
-            {displayBooks.map((rb, i) => {
-              const s = rb.owned ? statusBadge(rb.owned.status) : null;
+            {!loading && allBooks.map((db, i) => {
+              const s = db.owned ? statusBadge(db.owned.status) : null;
               return (
-                <div key={i} className="flex items-center gap-3 px-4 py-3"
-                  style={{ borderBottom: "1px solid var(--border)", opacity: rb.owned ? 1 : 0.6 }}>
-                  <Cover src={rb.cover_url ?? undefined} alt={rb.title} width={38} height={52} className="rounded-lg flex-shrink-0" />
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5"
+                  style={{ borderBottom: "1px solid var(--border)", opacity: db.owned ? 1 : 0.55 }}>
+                  <Cover src={db.cover_url ?? undefined} alt={db.title} width={34} height={48} className="rounded-lg flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate" style={{ fontSize: 13, color: rb.owned ? "var(--txt1)" : "var(--txt3)" }}>{rb.title}</p>
-                    {rb.published_year && <p style={{ fontSize: 11, color: "var(--txt3)", marginTop: 1 }}>{rb.published_year}</p>}
+                    <p className="font-semibold truncate" style={{ fontSize: 13, color: db.owned ? "var(--txt1)" : "var(--txt3)" }}>{db.title}</p>
+                    {db.published_year && <p style={{ fontSize: 10, color: "var(--txt3)", marginTop: 1 }}>{db.published_year}</p>}
                   </div>
                   {s ? (
                     <span className="px-2 py-1 rounded-lg font-semibold flex-shrink-0"
@@ -170,7 +167,7 @@ export default function AuthorView({ books }: Props) {
                   ) : (
                     <span className="px-2 py-1 rounded-lg flex-shrink-0"
                       style={{ fontSize: 10, background: "var(--surface2)", color: "var(--txt3)", border: "1px dashed var(--border)" }}>
-                      Non possédé
+                      Manquant
                     </span>
                   )}
                 </div>
