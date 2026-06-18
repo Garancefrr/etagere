@@ -52,7 +52,7 @@ export default function CollectionCard({ collection, onEdit, onDelete }: Props) 
           {/* Count without bar — when total is not set */}
           {total === 0 && owned.length > 0 && (
             <p className="mt-2 font-semibold" style={{ fontSize: 13, color: "var(--accent)" }}>
-              {owned.length} tome{owned.length > 1 ? "s" : ""}
+              {owned.length} {owned.length > 1 ? "tomes" : "tome"}
             </p>
           )}
         </div>

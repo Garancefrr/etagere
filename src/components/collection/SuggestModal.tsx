@@ -117,7 +117,7 @@ export default function SuggestModal({ libraryId, onClose, onCreated }: Props) {
                 <Check className="w-7 h-7" style={{ color: "var(--have-t)" }} />
               </div>
               <p className="font-semibold" style={{ fontSize: 16, color: "var(--txt1)" }}>
-                {created.size} collection{created.size > 1 ? "s" : ""} créée{created.size > 1 ? "s" : ""} !
+                {Array.from(created.values()).length} {Array.from(created.values()).length > 1 ? "collections créées" : "collection créée"} !
               </p>
             </div>
           )}
@@ -140,7 +140,7 @@ export default function SuggestModal({ libraryId, onClose, onCreated }: Props) {
                   <p style={{ fontSize: 12, color: "var(--txt2)", marginTop: 1 }}>{s.author}</p>
                 )}
                 <p style={{ fontSize: 12, color: "var(--txt3)", marginTop: 2 }}>
-                  {s.books.length} livre{s.books.length > 1 ? "s" : ""} dans ta biblio
+                  {s.books.length} {s.books.length > 1 ? "livres" : "livre"} dans ta biblio
                 </p>
                 {/* Book titles preview */}
                 <p className="truncate mt-1" style={{ fontSize: 11, color: "var(--txt3)" }}>
