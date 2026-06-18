@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProfileId } from "@/lib/auth";
-import { insertBook, findCollection, resolveCollection } from "@/lib/db";
+import { insertBook, findCollection, resolveCollection, getBooks } from "@/lib/db";
 import { searchCoverByTitle } from "@/lib/cover-utils";
 import { createServerClient } from "@/lib/supabase";
 import { BookType, ReadStatus } from "@/types";
@@ -46,9 +46,7 @@ function extractSeries(title: string): { clean: string; seriesName?: string; ser
     }
   }
   const colonPattern = title.match(/^(.+?)\s*:\s*(.+)$/);
-  if (colonPattern) {
-    return { clean: colonPattern[2].trim(), seriesName: colonPattern[1].trim() };
-  }
+  if (colonPattern) return { clean: colonPattern[2].trim(), seriesName: colonPattern[1].trim() };
   return { clean: title };
 }
 
@@ -78,16 +76,29 @@ function parseCSV(text: string): BabelioRow[] {
 async function runImport(jobId: string, rows: BabelioRow[], libraryId: string, email: string) {
   const db = createServerClient();
   const profileId = await getProfileId(email);
-  let imported = 0, errors = 0;
+
+  // Load existing books to check for duplicates
+  const existingBooks = await getBooks(libraryId);
+  const existingIsbns = new Set(existingBooks.map(b => b.isbn).filter(Boolean));
+  const existingTitles = new Set(
+    existingBooks.map(b => b.title.toLowerCase().trim())
+  );
+
+  let imported = 0, skipped = 0, errors = 0;
   const total = rows.length;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rawTitle = row.Titre?.trim();
-    if (!rawTitle) continue;
+    if (!rawTitle) { skipped++; continue; }
 
     const { clean: title, seriesName, seriesIndex } = extractSeries(rawTitle);
     const isbn = row.ISBN?.replace(/[^0-9X]/gi, "") || undefined;
+
+    // Skip if already exists (by ISBN or title)
+    if (isbn && existingIsbns.has(isbn)) { skipped++; continue; }
+    if (existingTitles.has(title.toLowerCase().trim())) { skipped++; continue; }
+
     const authors = row.Auteur ? [row.Auteur.trim()] : [];
     const publisher = row.Editeur?.trim() || undefined;
     const bookType = detectType(rawTitle, publisher ?? "");
@@ -107,6 +118,10 @@ async function runImport(jobId: string, rows: BabelioRow[], libraryId: string, e
         rating, added_by: profileId ?? undefined,
       } as any);
 
+      // Track to avoid importing same title twice in same batch
+      existingTitles.add(title.toLowerCase().trim());
+      if (isbn) existingIsbns.add(isbn);
+
       if (seriesName && seriesIndex && (bookType === "bd" || bookType === "manga")) {
         try {
           await resolveCollection(libraryId, seriesName, seriesIndex, {
@@ -117,11 +132,10 @@ async function runImport(jobId: string, rows: BabelioRow[], libraryId: string, e
       imported++;
     } catch { errors++; }
 
-    // Update progress every 5 books
     if (i % 5 === 0 || i === total - 1) {
       const progress = Math.round(((i + 1) / total) * 100);
       await db.from("import_jobs").update({
-        progress, imported, errors,
+        progress, imported, errors, skipped,
         status: i === total - 1 ? "done" : "running",
         updated_at: new Date().toISOString(),
       }).eq("id", jobId);
@@ -146,17 +160,15 @@ export async function POST(req: NextRequest) {
     const text = decoder.decode(buffer);
     const rows = parseCSV(text);
 
-    // Create job in DB
     const db = createServerClient();
     const { data: job, error } = await db.from("import_jobs").insert({
       library_id, email, total: rows.length,
-      progress: 0, imported: 0, errors: 0,
+      progress: 0, imported: 0, errors: 0, skipped: 0,
       status: "running",
     }).select().single();
 
     if (error || !job) throw new Error("Impossible de créer le job");
 
-    // Run import in background (fire and forget)
     runImport(job.id, rows, library_id, email).catch(console.error);
 
     return NextResponse.json({ job_id: job.id, total: rows.length });
