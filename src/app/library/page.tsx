@@ -9,7 +9,7 @@ import BookCard from "@/components/book/BookCard";
 import BookDetail from "@/components/book/BookDetail";
 import Onboarding from "@/components/onboarding/Onboarding";
 import BottomNav from "@/components/layout/BottomNav";
-import { Search, SlidersHorizontal, LayoutGrid, List, RefreshCw, Image as ImageIcon } from "lucide-react";
+import { Search, SlidersHorizontal, LayoutGrid, List, RefreshCw, Image as ImageIcon, FileText } from "lucide-react";
 
 type Layout       = "grid" | "list";
 type FilterType   = BookType | "all";
@@ -27,12 +27,28 @@ export default function LibraryPage() {
   const [selected,       setSelected]       = useState<Book | null>(null);
   const [showFilters,    setShowFilters]    = useState(false);
   const [refreshingCovers, setRefreshingCovers] = useState(false);
+  const [refreshingDescs, setRefreshingDescs] = useState(false);
   const [refreshing,       setRefreshing]       = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await refreshAll();
     setTimeout(() => setRefreshing(false), 800);
+  };
+
+  const refreshDescriptions = async () => {
+    if (!library_id || refreshingDescs) return;
+    setRefreshingDescs(true);
+    try {
+      await fetch("/api/books/refresh-descriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ library_id }),
+      });
+      await refreshAll();
+    } finally {
+      setRefreshingDescs(false);
+    }
   };
 
   const refreshCovers = async () => {
@@ -59,14 +75,19 @@ export default function LibraryPage() {
     a_lire:   books.filter(b => b.status === "a_lire").length,
   }), [books]);
 
-  const filtered = useMemo(() => books.filter(b => {
-    const q = search.toLowerCase();
-    return (
-      (!q || b.title.toLowerCase().includes(q) || b.authors.some(a => a.toLowerCase().includes(q))) &&
-      (filterStatus === "all" || b.status === filterStatus) &&
-      (filterType   === "all" || b.book_type === filterType)
-    );
-  }), [books, search, filterStatus, filterType]);
+  const filtered = useMemo(() => {
+    const statusOrder: Record<string, number> = { en_cours: 0, a_lire: 1, lu: 2 };
+    return books
+      .filter(b => {
+        const q = search.toLowerCase();
+        return (
+          (!q || b.title.toLowerCase().includes(q) || b.authors.some(a => a.toLowerCase().includes(q))) &&
+          (filterStatus === "all" || b.status === filterStatus) &&
+          (filterType   === "all" || b.book_type === filterType)
+        );
+      })
+      .sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+  }, [books, search, filterStatus, filterType]);
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const handleUpdate = async (id: string, updates: Partial<Book>) => {
@@ -167,6 +188,16 @@ export default function LibraryPage() {
               {refreshingCovers
                 ? <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
                 : <ImageIcon className="w-4 h-4" style={{ color: "var(--accent)" }} />}
+            </button>
+          )}
+          {/* Description refresh — only when needed */}
+          {books.some(b => !b.description) && (
+            <button onClick={refreshDescriptions} disabled={refreshingDescs}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              {refreshingDescs
+                ? <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+                : <FileText className="w-4 h-4" style={{ color: "var(--accent)" }} />}
             </button>
           )}
           {/* Layout toggle */}
