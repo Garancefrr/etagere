@@ -81,7 +81,7 @@ const STEPS = [
         <div className="flex gap-1.5 justify-center mt-1">
           {[1,2,3,4,5].map(n => (
             <div key={n} className="flex items-center justify-center font-bold"
-              style={{ width: 24, height: 24, borderRadius: 6, fontSize: 9,
+              style={{ width: 24, height: 24, borderRadius: 6, fontSize: 11,
                 background: n <= 2 ? "var(--have-bg)" : "var(--miss-bg)",
                 color: n <= 2 ? "var(--have-t)" : "var(--miss-t)",
                 border: n <= 2 ? "1px solid var(--have-b)" : "1px dashed var(--miss-b)" }}>

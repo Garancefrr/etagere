@@ -35,8 +35,8 @@ export default function BookCard({ book, onClick }: Props) {
         {book.series_name && (
           <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 rounded-md px-1 py-0.5 max-w-[65%]"
             style={{ background: "rgba(10,13,31,0.75)", backdropFilter: "blur(4px)" }}>
-            <span style={{ fontSize: 7 }}>📚</span>
-            <span className="truncate" style={{ fontSize: 7, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>
+            <span style={{ fontSize: 10 }}>📚</span>
+            <span className="truncate" style={{ fontSize: 10, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>
               {book.series_name.length > 12 ? book.series_name.slice(0, 12) + "\u2026" : book.series_name}
               {book.series_index ? ` #${book.series_index}` : ""}
             </span>

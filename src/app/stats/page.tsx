@@ -143,7 +143,7 @@ export default function StatsPage() {
                   style={{ height: count > 0 ? Math.max(6, (count / maxMonth) * 64) : 4,
                     background: count > 0 ? "var(--accent)" : "var(--border)",
                     opacity: i > new Date().getMonth() ? 0.3 : 1 }} />
-                <span style={{ fontSize: 8, color: "var(--txt3)" }}>{monthName(i)}</span>
+                <span style={{ fontSize: 10, color: "var(--txt3)" }}>{monthName(i)}</span>
               </div>
             ))}
           </div>

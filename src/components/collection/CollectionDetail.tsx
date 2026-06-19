@@ -114,10 +114,10 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {collection.author && <span style={{ fontSize: 11, color: "var(--txt3)" }}>{collection.author}</span>}
-            {enCoursCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "#FEF9C3", color: "#A16207" }}>📖 {enCoursCount}</span>}
-            {aLireCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "var(--accent-l)", color: "var(--accent)" }}>📌 {aLireCount}</span>}
-            {luCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "var(--have-bg)", color: "var(--have-t)" }}>✅ {luCount}</span>}
-            {nonOwnedCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "var(--surface2)", color: "var(--txt3)" }}>📕 {nonOwnedCount}</span>}
+            {enCoursCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 11, background: "#FEF9C3", color: "#A16207" }}>📖 {enCoursCount}</span>}
+            {aLireCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 11, background: "var(--accent-l)", color: "var(--accent)" }}>📌 {aLireCount}</span>}
+            {luCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 11, background: "var(--have-bg)", color: "var(--have-t)" }}>✅ {luCount}</span>}
+            {nonOwnedCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 11, background: "var(--surface2)", color: "var(--txt3)" }}>📕 {nonOwnedCount}</span>}
           </div>
           <div className="h-1 rounded-full overflow-hidden mt-1.5" style={{ background: "var(--border)" }}>
             <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, background: pct === 100 ? "var(--have-t)" : "var(--accent)" }} />
@@ -159,7 +159,7 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
                           <Cover src={rb.cover_url ?? undefined} alt={rb.title} className="w-full h-full rounded-lg" />
                           <span className="absolute bottom-0 left-0 right-0 text-center py-0.5 font-bold"
                             style={{
-                              fontSize: 8, background: s.bg, color: s.color,
+                              fontSize: 10, background: s.bg, color: s.color,
                               borderRadius: "0 0 8px 8px",
                               border: s.border ? "1px dashed var(--border)" : "none",
                               borderTop: "none",
