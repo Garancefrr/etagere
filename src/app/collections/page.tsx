@@ -356,7 +356,7 @@ export default function CollectionsPage() {
               <Button onClick={() => setShowCreate(true)}>+ Créer une collection</Button>
             </div>
           ) : filtered.map(c => (
-            <CollectionCard key={c.id} collection={c} onClick={() => setSelectedCol(c)} />
+            <CollectionCard key={c.id} collection={c} books={books} onClick={() => setSelectedCol(c)} />
           ))}
         </div>
       ) : (
