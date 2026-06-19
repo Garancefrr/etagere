@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
             series_index:   row.series_index ?? null,
             rating:         row.rating ?? null,
             description:    null,
+            finished_at:    row.finished_at ?? null,
             added_by:       profileId ?? null,
           } as any);
 

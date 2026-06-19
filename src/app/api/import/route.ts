@@ -5,7 +5,7 @@ import { BookType, ReadStatus } from "@/types";
 
 interface BabelioRow {
   ISBN: string; Titre: string; Auteur: string; Editeur: string;
-  "Date de publication": string; Statut: string; Note: string;
+  "Date de publication": string; "Date d`entrée dans Babelio": string; Statut: string; Note: string;
 }
 
 function mapStatus(s: string): ReadStatus {
@@ -109,14 +109,28 @@ export async function POST(req: NextRequest) {
       const publisher = row.Editeur?.trim() || undefined;
       const note = row.Note ? parseFloat(row.Note) : 0;
 
+      const status = mapStatus(row.Statut ?? "");
+      // Use Babelio date as finished_at for "lu" books
+      const babelioDate = row["Date d`entrée dans Babelio"] ?? null;
+      let finished_at: string | null = null;
+      if (status === "lu" && babelioDate) {
+        try {
+          // Babelio format: "DD/MM/YYYY" or "YYYY-MM-DD"
+          const parts = babelioDate.includes("/") ? babelioDate.split("/") : null;
+          const d = parts ? new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])) : new Date(babelioDate);
+          if (!isNaN(d.getTime())) finished_at = d.toISOString();
+        } catch { /* ignore */ }
+      }
+
       prepared.push({
         isbn, title, authors, publisher,
         book_type: detectType(rawTitle, publisher ?? ""),
-        status: mapStatus(row.Statut ?? ""),
+        status,
         series_name: seriesName || null,
         series_index: seriesIndex || null,
         rating: note > 0 ? Math.min(5, Math.round(note / 4)) : null,
         published_year: row["Date de publication"] ? parseInt((row["Date de publication"]).slice(0, 4)) || null : null,
+        finished_at,
       });
     }
 
