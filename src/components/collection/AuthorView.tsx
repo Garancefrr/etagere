@@ -52,7 +52,7 @@ export default function AuthorView({ books }: Props) {
   );
 
   const statusTag = (b?: Book) => {
-    if (!b) return { label: "À acheter", bg: "var(--miss-bg)", color: "var(--miss-t)", border: true };
+    if (!b) return { label: "Manquant", bg: "var(--miss-bg)", color: "var(--miss-t)", border: true };
     if (b.status === "lu")       return { label: "Lu",       bg: "var(--have-bg)", color: "var(--have-t)", border: false };
     if (b.status === "en_cours") return { label: "En cours", bg: "#FEF9C3",        color: "#A16207",      border: false };
     return                              { label: "À lire",   bg: "var(--accent-l)", color: "var(--accent)", border: false };
@@ -162,7 +162,7 @@ export default function AuthorView({ books }: Props) {
                 </>}
                 {missing.length > 0 && <>
                   <p className="font-bold uppercase tracking-wider mt-4 mb-2" style={{ fontSize: 11, color: "var(--miss-t)" }}>
-                    🛒 À découvrir ({missing.length})
+                    📕 Manquants ({missing.length})
                   </p>
                   {renderGrid(missing)}
                 </>}
