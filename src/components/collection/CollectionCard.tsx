@@ -17,39 +17,45 @@ export default function CollectionCard({ collection, onClick }: Props) {
 
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2.5 active:opacity-70"
+      className="w-full flex items-center gap-2.5 px-3 py-2 active:opacity-70"
       style={{ borderBottom: "1px solid var(--border)" }}>
-      {/* Cover or colored initial */}
+      {/* Cover or initial — small square */}
       {collection.cover_url ? (
-        <Cover src={collection.cover_url} alt={collection.name} width={38} height={52} className="rounded-lg flex-shrink-0" />
+        <Cover src={collection.cover_url} alt={collection.name} width={36} height={36} className="rounded-lg flex-shrink-0" />
       ) : (
         <div className="flex items-center justify-center flex-shrink-0 rounded-lg font-bold"
-          style={{ width: 38, height: 52, background: "var(--accent-l)", color: "var(--accent)", fontSize: 18 }}>
+          style={{ width: 36, height: 36, background: "var(--accent-l)", color: "var(--accent)", fontSize: 15 }}>
           {initial}
         </div>
       )}
 
-      {/* Info */}
+      {/* Info + progress */}
       <div className="flex-1 min-w-0">
-        <p className="font-bold truncate" style={{ fontSize: 14, color: "var(--txt1)" }}>
-          {collection.name}
-        </p>
-        <p className="truncate" style={{ fontSize: 12, color: "var(--txt2)", marginTop: 1 }}>
-          {collection.author ?? emoji}
-          <span style={{ color: "var(--txt3)", marginLeft: 6 }}>
-            · {owned.length}{total > 0 ? `/${total}` : ""} {emoji}
+        <div className="flex items-center gap-1.5">
+          <p className="font-bold truncate" style={{ fontSize: 13, color: "var(--txt1)" }}>{collection.name}</p>
+          <span className="flex-shrink-0" style={{ fontSize: 10 }}>{emoji}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="truncate" style={{ fontSize: 11, color: "var(--txt3)" }}>
+            {collection.author ?? "—"}
+          </p>
+          <span className="flex-shrink-0 font-semibold" style={{ fontSize: 11, color: total > 0 && pct === 100 ? "var(--have-t)" : "var(--accent)" }}>
+            {owned.length}{total > 0 ? `/${total}` : ""}
           </span>
-        </p>
-        {/* Progress bar */}
-        {total > 0 && (
-          <div className="h-1 rounded-full overflow-hidden mt-1.5" style={{ background: "var(--border)", maxWidth: 120 }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct === 100 ? "var(--have-t)" : "var(--accent)" }} />
-          </div>
-        )}
+        </div>
+        {/* Progress bar — always visible */}
+        <div className="h-1 rounded-full overflow-hidden mt-1" style={{ background: "var(--border)" }}>
+          <div className="h-full rounded-full"
+            style={{
+              width: total > 0 ? `${pct}%` : "100%",
+              background: total > 0 ? (pct === 100 ? "var(--have-t)" : "var(--accent)") : "var(--accent)",
+              opacity: total > 0 ? 1 : 0.3,
+            }} />
+        </div>
       </div>
 
       {/* Chevron */}
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, color: "var(--txt3)" }}>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, color: "var(--txt3)" }}>
         <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     </button>
