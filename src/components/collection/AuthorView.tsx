@@ -137,9 +137,9 @@ export default function AuthorView({ books }: Props) {
                 {nonPossedes > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "var(--surface2)", color: "var(--txt3)" }}>📕 {nonPossedes} manquant{nonPossedes > 1 ? "s" : ""}</span>}
               </div>
             </div>
-            <button onClick={() => setSelected(null)} className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            <button onClick={() => setSelected(null)} className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: "var(--surface2)" }}>
-              <span style={{ fontSize: 16, color: "var(--txt2)" }}>×</span>
+              <span style={{ fontSize: 20, color: "var(--txt2)" }}>×</span>
             </button>
           </div>
 

@@ -49,9 +49,9 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
         <div className="flex justify-center pt-2 sm:hidden">
           <div className="w-10 h-1 rounded-full" style={{ background: "var(--border)" }} />
         </div>
-        <button onClick={onClose} className="absolute top-3 right-4 w-7 h-7 rounded-full flex items-center justify-center z-10"
+        <button onClick={onClose} className="absolute top-3 right-4 w-10 h-10 rounded-full flex items-center justify-center z-10"
           style={{ background: "var(--surface2)" }}>
-          <X className="w-3.5 h-3.5" style={{ color: "var(--txt2)" }} />
+          <X className="w-5 h-5" style={{ color: "var(--txt2)" }} />
         </button>
 
         <div className="overflow-y-auto" style={{ maxHeight: "calc(90vh - 20px)" }}>
@@ -88,8 +88,8 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
                       onChange={e => { setSeriesName(e.target.value); setShowDrop(true); }}
                       onClick={e => { e.stopPropagation(); setShowDrop(true); }}
                       placeholder="Aucune collection"
-                      className="flex-1 outline-none bg-transparent text-xs"
-                      style={{ color: "var(--txt1)" }}
+                      className="flex-1 outline-none bg-transparent"
+                      style={{ color: "var(--txt1)", fontSize: 16 }}
                     />
                     <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--txt3)" }} />
                   </div>
@@ -122,8 +122,8 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
                 </div>
                 <input value={seriesIndex} onChange={e => setSeriesIndex(e.target.value)}
                   placeholder="T." type="number"
-                  className="w-14 px-2 py-2 rounded-xl outline-none text-xs text-center"
-                  style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)" }} />
+                  className="w-14 px-2 py-2 rounded-xl outline-none text-center"
+                  style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
               </div>
             </Section>
 
@@ -169,8 +169,8 @@ export default function BookDetail({ book, collections, onClose, onUpdate, onDel
             {/* Note */}
             <Section label="Mon avis">
               <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Vos impressions..."
-                rows={2} className="w-full p-2.5 rounded-xl text-xs resize-none outline-none"
-                style={{ background: "var(--surface2)", color: "var(--txt1)", border: "1px solid var(--border)", fontFamily: "inherit" }} />
+                rows={2} className="w-full p-2.5 rounded-xl resize-none outline-none"
+                style={{ background: "var(--surface2)", color: "var(--txt1)", border: "1px solid var(--border)", fontFamily: "inherit", fontSize: 16 }} />
             </Section>
 
             {/* Actions */}

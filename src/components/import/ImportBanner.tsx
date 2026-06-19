@@ -129,7 +129,7 @@ export function ImportBanner({ onComplete }: { onComplete?: () => void }) {
                 : `${job.total} livres en cours… tu peux naviguer librement`}
           </p>
         </div>
-        <button onClick={dismiss} className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+        <button onClick={dismiss} className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: "var(--surface2)" }}>
           <X className="w-3.5 h-3.5" style={{ color: "var(--txt3)" }} />
         </button>

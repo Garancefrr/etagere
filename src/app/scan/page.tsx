@@ -264,7 +264,7 @@ function IsbnPanel({ libraryId, userEmail, collections, rapidMode, onSuccess, on
           </div>
           <button onClick={doAdd} disabled={loading}
             className="w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2"
-            style={{ background: "var(--accent)", color: "#fff", fontSize: 15 }}>
+            style={{ background: "var(--accent)", color: "#fff", fontSize: 16 }}>
             {loading
               ? <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
               : "✅ Ajouter à ma bibliothèque"
@@ -361,7 +361,7 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
           <input autoFocus type="text" value={query} onChange={e => handleQuery(e.target.value)}
             placeholder="Titre, auteur..."
             className="flex-1 outline-none bg-transparent"
-            style={{ color: "var(--txt1)", fontSize: 15 }} />
+            style={{ color: "var(--txt1)", fontSize: 16 }} />
           {query && <button onClick={() => { setQuery(""); setResults([]); setSelected(null); }}>
             <X className="w-4 h-4" style={{ color: "var(--txt3)" }} />
           </button>}
@@ -416,7 +416,7 @@ function SearchPanel({ libraryId, userEmail, collections, onSuccess }: SearchPan
               )}
               <button onClick={() => doAdd(selected)} disabled={saving}
                 className="w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2"
-                style={{ background: "var(--accent)", color: "#fff", fontSize: 15 }}>
+                style={{ background: "var(--accent)", color: "#fff", fontSize: 16 }}>
                 {saving
                   ? <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "#fff", borderTopColor: "transparent" }} />
                   : <><Check className="w-5 h-5" /> Ajouter à ma bibliothèque</>}

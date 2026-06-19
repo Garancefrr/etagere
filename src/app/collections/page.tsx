@@ -78,7 +78,7 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
                 <input type="text" value={name} onChange={e => handleNameChange(e.target.value)}
                   placeholder="Rechercher une série..."
                   className="flex-1 outline-none bg-transparent"
-                  style={{ color: "var(--txt1)", fontSize: 15 }} />
+                  style={{ color: "var(--txt1)", fontSize: 16 }} />
                 {searching && (
                   <div className="w-4 h-4 rounded-full border-2 animate-spin flex-shrink-0"
                     style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
@@ -141,7 +141,7 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
             <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Auteur</label>
             <input type="text" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Ex: Peyo..."
               className="w-full px-4 py-3 rounded-2xl outline-none"
-              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
           </div>
 
           {/* Total volumes */}
@@ -149,7 +149,7 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
             <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Nombre total de tomes</label>
             <input type="number" value={total} onChange={e => setTotal(e.target.value)} placeholder="Ex: 40"
               className="w-full px-4 py-3 rounded-2xl outline-none"
-              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
           </div>
 
           <Button onClick={() => {
@@ -163,7 +163,7 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
               });
               onClose();
             }
-          }} className="w-full py-4 rounded-2xl" style={{ fontSize: 15 }}>
+          }} className="w-full py-4 rounded-2xl" style={{ fontSize: 16 }}>
             Créer la collection
           </Button>
         </div>
@@ -193,9 +193,9 @@ function ShareModal({ collection, profileId, onClose }: { collection: Collection
         {!link ? <div className="flex justify-center py-6"><div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div> : (
           <div className="flex flex-col gap-3">
             <div className="px-3 py-2 rounded-xl truncate" style={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12, color: "var(--txt3)" }}>{link}</div>
-            <button onClick={() => shareVia("whatsapp")} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3" style={{ background: "#25D366", color: "#fff", fontSize: 15 }}><MessageCircle className="w-5 h-5" /> WhatsApp</button>
+            <button onClick={() => shareVia("whatsapp")} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3" style={{ background: "#25D366", color: "#fff", fontSize: 16 }}><MessageCircle className="w-5 h-5" /> WhatsApp</button>
             <button onClick={() => shareVia("sms")} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3" style={{ background: "var(--surface2)", color: "var(--txt1)", fontSize: 15, border: "1px solid var(--border)" }}><MessageCircle className="w-5 h-5" /> SMS / iMessage</button>
-            <button onClick={copy} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3" style={{ background: copied ? "var(--have-bg)" : "var(--accent-l)", color: copied ? "var(--have-t)" : "var(--accent)", fontSize: 15 }}>
+            <button onClick={copy} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3" style={{ background: copied ? "var(--have-bg)" : "var(--accent-l)", color: copied ? "var(--have-t)" : "var(--accent)", fontSize: 16 }}>
               {copied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}{copied ? "Copié !" : "Copier le lien"}
             </button>
           </div>
@@ -222,15 +222,15 @@ function EditModal({ collection, onClose, onSave }: { collection: Collection; on
         <div className="space-y-4">
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Nom</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3 rounded-2xl outline-none" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+            <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3 rounded-2xl outline-none" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Auteur</label>
-            <input type="text" value={author} onChange={e => setAuthor(e.target.value)} className="w-full px-4 py-3 rounded-2xl outline-none" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+            <input type="text" value={author} onChange={e => setAuthor(e.target.value)} className="w-full px-4 py-3 rounded-2xl outline-none" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Nombre total de tomes</label>
-            <input type="number" value={total} onChange={e => setTotal(e.target.value)} className="w-full px-4 py-3 rounded-2xl outline-none" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 15 }} />
+            <input type="number" value={total} onChange={e => setTotal(e.target.value)} className="w-full px-4 py-3 rounded-2xl outline-none" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, color: "var(--txt3)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Type</label>
@@ -244,7 +244,7 @@ function EditModal({ collection, onClose, onSave }: { collection: Collection; on
             </div>
           </div>
           <Button onClick={() => { if (name.trim()) onSave(collection.id, { name: name.trim(), author: author.trim() || undefined, total_volumes: total ? parseInt(total) : undefined, book_type: type }); }}
-            className="w-full py-4 rounded-2xl" style={{ fontSize: 15 }}>Enregistrer</Button>
+            className="w-full py-4 rounded-2xl" style={{ fontSize: 16 }}>Enregistrer</Button>
         </div>
       </div>
     </div>
@@ -333,7 +333,7 @@ export default function CollectionsPage() {
         {activeTab === "series" && <>
           <div className="flex items-center gap-2 px-4 py-3 rounded-2xl mb-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <Search className="w-5 h-5" style={{ color: "var(--txt3)" }} />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="flex-1 outline-none bg-transparent" style={{ color: "var(--txt1)", fontSize: 15 }} />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="flex-1 outline-none bg-transparent" style={{ color: "var(--txt1)", fontSize: 16 }} />
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
             {(["all","livre","bd","manga"] as Filter[]).map(f => (

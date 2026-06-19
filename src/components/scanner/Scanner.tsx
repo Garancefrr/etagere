@@ -69,7 +69,7 @@ function EditForm({
             onClick={e => { e.stopPropagation(); setShowDropdown(true); }}
             placeholder={editVolume ? "⚠️ Série (obligatoire)" : "Série (ex: Les Schtroumpfs)"}
             className="flex-1 outline-none bg-transparent"
-            style={{ color: "var(--txt1)", fontSize: 12 }} />
+            style={{ color: "var(--txt1)", fontSize: 16 }} />
           <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--txt3)" }} />
         </div>
         {showDropdown && (filtered.length > 0 || (editSeries.trim() && !collectionNames.includes(editSeries.trim()))) && (
@@ -95,7 +95,7 @@ function EditForm({
       <input value={editVolume} onChange={e => setEditVolume(e.target.value)}
         placeholder="N° de tome" type="number"
         className="w-24 px-3 py-2 rounded-xl outline-none"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 12 }} />
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--txt1)", fontSize: 16 }} />
     </div>
   );
 }

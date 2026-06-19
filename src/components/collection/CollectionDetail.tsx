@@ -96,17 +96,17 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
           <div className="flex items-center gap-2 mb-1">
             <p className="font-bold flex-1 truncate" style={{ fontSize: 16, color: "var(--txt1)" }}>{emoji} {collection.name}</p>
             <div className="flex gap-1 flex-shrink-0">
-              {onShare && <button onClick={onShare} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--accent)" }}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              {onShare && <button onClick={onShare} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--accent)" }}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               </button>}
-              <button onClick={onEdit} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
-                <Edit2 className="w-2.5 h-2.5" style={{ color: "var(--txt2)" }} />
+              <button onClick={onEdit} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+                <Edit2 className="w-4 h-4" style={{ color: "var(--txt2)" }} />
               </button>
               {!confirmDel
-                ? <button onClick={() => setConfirmDel(true)} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--miss-bg)" }}>
-                    <Trash2 className="w-2.5 h-2.5" style={{ color: "var(--miss-t)" }} />
+                ? <button onClick={() => setConfirmDel(true)} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--miss-bg)" }}>
+                    <Trash2 className="w-4 h-4" style={{ color: "var(--miss-t)" }} />
                   </button>
-                : <button onClick={onDelete} className="px-2 h-6 rounded-md font-bold" style={{ fontSize: 9, background: "var(--miss-t)", color: "#fff" }}>Suppr</button>}
+                : <button onClick={onDelete} className="px-3 h-9 rounded-xl font-bold" style={{ fontSize: 11, background: "var(--miss-t)", color: "#fff" }}>Suppr</button>}
               <button onClick={onClose} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
                 <X className="w-3 h-3" style={{ color: "var(--txt2)" }} />
               </button>

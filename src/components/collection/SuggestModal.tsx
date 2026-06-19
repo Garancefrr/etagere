@@ -83,9 +83,9 @@ export default function SuggestModal({ libraryId, onClose, onCreated }: Props) {
               <p style={{ fontSize: 12, color: "var(--txt3)" }}>Basées sur ta bibliothèque</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center"
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center"
             style={{ background: "var(--surface2)" }}>
-            <X className="w-4 h-4" style={{ color: "var(--txt2)" }} />
+            <X className="w-5 h-5" style={{ color: "var(--txt2)" }} />
           </button>
         </div>
 
