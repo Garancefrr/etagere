@@ -107,8 +107,8 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
                     <Trash2 className="w-4 h-4" style={{ color: "var(--miss-t)" }} />
                   </button>
                 : <button onClick={onDelete} className="px-3 h-9 rounded-xl font-bold" style={{ fontSize: 11, background: "var(--miss-t)", color: "#fff" }}>Suppr</button>}
-              <button onClick={onClose} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
-                <X className="w-3 h-3" style={{ color: "var(--txt2)" }} />
+              <button onClick={onClose} className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+                <X className="w-5 h-5" style={{ color: "var(--txt2)" }} />
               </button>
             </div>
           </div>
