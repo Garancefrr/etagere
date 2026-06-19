@@ -71,7 +71,7 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
   }, [collection.name, collection.author, viewMode]); // eslint-disable-line
 
   const statusTag = (b?: Book) => {
-    if (!b) return { label: "Non possédé", bg: "var(--surface2)", color: "var(--txt3)", border: true };
+    if (!b) return { label: "À acheter", bg: "var(--miss-bg)", color: "var(--miss-t)", border: true };
     if (b.status === "lu")       return { label: "Lu",       bg: "var(--have-bg)", color: "var(--have-t)", border: false };
     if (b.status === "en_cours") return { label: "En cours", bg: "#FEF9C3",        color: "#A16207",      border: false };
     return                              { label: "À lire",   bg: "var(--accent-l)", color: "var(--accent)", border: false };

@@ -52,7 +52,7 @@ export default function AuthorView({ books }: Props) {
   );
 
   const statusTag = (b?: Book) => {
-    if (!b) return { label: "Non possédé", bg: "var(--surface2)", color: "var(--txt3)", border: true };
+    if (!b) return { label: "À acheter", bg: "var(--miss-bg)", color: "var(--miss-t)", border: true };
     if (b.status === "lu")       return { label: "Lu",       bg: "var(--have-bg)", color: "var(--have-t)", border: false };
     if (b.status === "en_cours") return { label: "En cours", bg: "#FEF9C3",        color: "#A16207",      border: false };
     return                              { label: "À lire",   bg: "var(--accent-l)", color: "var(--accent)", border: false };
@@ -126,30 +126,48 @@ export default function AuthorView({ books }: Props) {
           {/* Grid — same as CollectionDetail */}
           <div className="overflow-y-auto flex-1 p-3">
             {loading && <div className="flex justify-center py-8"><div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div>}
-            {!loading && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                {displayBooks.map((rb, i) => {
-                  const s = statusTag(rb.owned);
-                  return (
-                    <div key={i} className="flex flex-col" style={{ opacity: rb.owned ? 1 : 0.45 }}>
-                      <div className="relative w-full overflow-hidden rounded-lg" style={{ height: 150 }}>
-                        <Cover src={rb.cover_url ?? undefined} alt={rb.title} className="w-full h-full object-cover" />
-                        <span className="absolute bottom-0 left-0 right-0 text-center py-0.5 font-bold"
-                          style={{ fontSize: 10, background: s.bg, color: s.color,
-                            border: s.border ? "1px dashed var(--border)" : "none", borderTop: "none" }}>
-                          {s.label}
-                        </span>
+            {!loading && (() => {
+              const owned = displayBooks.filter(b => b.owned);
+              const missing = displayBooks.filter(b => !b.owned);
+              const renderGrid = (items: typeof displayBooks) => (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  {items.map((rb, i) => {
+                    const s = statusTag(rb.owned);
+                    return (
+                      <div key={i} className="flex flex-col" style={{ opacity: rb.owned ? 1 : 0.5 }}>
+                        <div className="relative w-full overflow-hidden rounded-lg" style={{ height: 150 }}>
+                          <Cover src={rb.cover_url ?? undefined} alt={rb.title} className="w-full h-full object-cover" />
+                          <span className="absolute bottom-0 left-0 right-0 text-center py-0.5 font-bold"
+                            style={{ fontSize: 10, background: s.bg, color: s.color,
+                              border: s.border ? "1px dashed var(--border)" : "none", borderTop: "none" }}>
+                            {s.label}
+                          </span>
+                        </div>
+                        <div style={{ height: 28 }}>
+                          <p className="font-semibold mt-1 line-clamp-2" style={{ fontSize: 10, color: rb.owned ? "var(--txt1)" : "var(--txt3)", lineHeight: 1.2 }}>
+                            {rb.title}
+                          </p>
+                        </div>
                       </div>
-                      <div style={{ height: 28 }}>
-                        <p className="font-semibold mt-1 line-clamp-2" style={{ fontSize: 10, color: rb.owned ? "var(--txt1)" : "var(--txt3)", lineHeight: 1.2 }}>
-                          {rb.title}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+              return <>
+                {owned.length > 0 && <>
+                  <p className="font-bold uppercase tracking-wider mb-2" style={{ fontSize: 11, color: "var(--accent)" }}>
+                    📚 Ma bibliothèque ({owned.length})
+                  </p>
+                  {renderGrid(owned)}
+                </>}
+                {missing.length > 0 && <>
+                  <p className="font-bold uppercase tracking-wider mt-4 mb-2" style={{ fontSize: 11, color: "var(--miss-t)" }}>
+                    🛒 À découvrir ({missing.length})
+                  </p>
+                  {renderGrid(missing)}
+                </>}
+              </>;
+            })()}
           </div>
         </div>
       </div>
