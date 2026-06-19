@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description: "Votre bibliothèque personnelle, toujours avec vous.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Folio" },
+  other: { "mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
