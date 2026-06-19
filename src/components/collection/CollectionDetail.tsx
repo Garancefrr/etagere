@@ -33,7 +33,7 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
 
   const isBdManga = collection.book_type === "bd" || collection.book_type === "manga";
   const hasTotalVolumes = total > 0;
-  const viewMode = isBdManga || hasTotalVolumes ? "numbered" : "list";
+  const viewMode = isBdManga || hasTotalVolumes ? "numbered" : "grid";
 
   const ownedBooks = books.filter(b =>
     b.series_name?.toLowerCase().trim() === collection.name.toLowerCase().trim() ||
@@ -50,40 +50,37 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
     if (viewMode === "numbered") return;
     setLoading(true);
     const query = collection.author ?? collection.name;
-    fetch(`/api/books/search?q=${encodeURIComponent(query)}`)
+    fetch(`/api/authors/books?author=${encodeURIComponent(query)}`)
       .then(r => r.json())
       .then((results: any[]) => {
-        const filtered = results.filter(r => {
-          if (collection.author) {
-            return r.authors?.some((a: string) => {
-              const al = a.toLowerCase(), cl = collection.author!.toLowerCase();
-              return al.includes(cl) || cl.includes(al) || al.split(" ").pop() === cl.split(" ").pop();
-            });
-          }
-          return r.title.toLowerCase().includes(collection.name.toLowerCase()) || r.series_name?.toLowerCase().includes(collection.name.toLowerCase());
-        });
-        const mapped: RemoteBook[] = filtered.map(r => ({
+        const mapped: RemoteBook[] = results.map(r => ({
           title: r.title, isbn: r.isbn, cover_url: r.cover_url,
           published_year: r.published_year, series_index: r.series_index,
-          owned: ownedBooks.find(b => b.title.toLowerCase() === r.title.toLowerCase() || (b.isbn && b.isbn === r.isbn)),
+          owned: ownedBooks.find(b => b.title.toLowerCase().trim() === r.title.toLowerCase().trim() || (b.isbn && b.isbn === r.isbn)),
         }));
         ownedBooks.forEach(ob => {
           if (!mapped.some(m => m.owned?.id === ob.id))
             mapped.push({ title: ob.title, isbn: ob.isbn ?? undefined, cover_url: ob.cover_url, series_index: ob.series_index, owned: ob });
         });
-        const sortOrder = (rb: RemoteBook) => !rb.owned ? 4 : rb.owned.status === "en_cours" ? 0 : rb.owned.status === "a_lire" ? 1 : 2;
-        mapped.sort((a, b) => sortOrder(a) - sortOrder(b) || a.title.localeCompare(b.title));
+        const so = (rb: RemoteBook) => !rb.owned ? 4 : rb.owned.status === "en_cours" ? 0 : rb.owned.status === "a_lire" ? 1 : 2;
+        mapped.sort((a, b) => so(a) - so(b) || a.title.localeCompare(b.title));
         setRemoteBooks(mapped);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [collection.name, collection.author, viewMode]); // eslint-disable-line
 
-  const badge = (status: string) => {
-    if (status === "lu")       return { label: "Lu",       bg: "var(--have-bg)", color: "var(--have-t)" };
-    if (status === "en_cours") return { label: "En cours", bg: "#FEF9C3",        color: "#A16207" };
-    return                            { label: "À lire",   bg: "var(--accent-l)", color: "var(--accent)" };
+  const statusTag = (b?: Book) => {
+    if (!b) return { label: "Non possédé", bg: "var(--surface2)", color: "var(--txt3)", border: true };
+    if (b.status === "lu")       return { label: "Lu",       bg: "var(--have-bg)", color: "var(--have-t)", border: false };
+    if (b.status === "en_cours") return { label: "En cours", bg: "#FEF9C3",        color: "#A16207",      border: false };
+    return                              { label: "À lire",   bg: "var(--accent-l)", color: "var(--accent)", border: false };
   };
+
+  const displayBooks = remoteBooks.length > 0
+    ? remoteBooks
+    : ownedBooks.map(b => ({ title: b.title, cover_url: b.cover_url, series_index: b.series_index, owned: b } as RemoteBook));
+  const nonOwnedCount = remoteBooks.filter(b => !b.owned).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -94,102 +91,91 @@ export default function CollectionDetail({ collection, books, onClose, onEdit, o
           <div className="w-10 h-1 rounded-full" style={{ background: "var(--border)" }} />
         </div>
 
-        {/* Compact header */}
-        <div className="px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div className="flex items-center gap-2">
+        {/* Header */}
+        <div className="px-4 pt-1 pb-2 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2 mb-1">
             <p className="font-bold flex-1 truncate" style={{ fontSize: 16, color: "var(--txt1)" }}>{emoji} {collection.name}</p>
-            <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--surface2)" }}>
-              <X className="w-3.5 h-3.5" style={{ color: "var(--txt2)" }} />
-            </button>
-          </div>
-          {/* Stats + actions row */}
-          <div className="flex items-center justify-between mt-1.5">
-            <div className="flex gap-2 flex-wrap">
-              {collection.author && <span style={{ fontSize: 11, color: "var(--txt3)" }}>{collection.author}</span>}
-              {enCoursCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "#FEF9C3", color: "#A16207" }}>📖 {enCoursCount}</span>}
-              {aLireCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "var(--accent-l)", color: "var(--accent)" }}>📌 {aLireCount}</span>}
-              {luCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 10, background: "var(--have-bg)", color: "var(--have-t)" }}>✅ {luCount}</span>}
-            </div>
-            <div className="flex gap-1">
-              {onShare && <button onClick={onShare} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--surface2)" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--accent)" }}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <div className="flex gap-1 flex-shrink-0">
+              {onShare && <button onClick={onShare} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--accent)" }}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               </button>}
-              <button onClick={onEdit} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--surface2)" }}>
-                <Edit2 className="w-3 h-3" style={{ color: "var(--txt2)" }} />
+              <button onClick={onEdit} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+                <Edit2 className="w-2.5 h-2.5" style={{ color: "var(--txt2)" }} />
               </button>
               {!confirmDel
-                ? <button onClick={() => setConfirmDel(true)} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--miss-bg)" }}>
-                    <Trash2 className="w-3 h-3" style={{ color: "var(--miss-t)" }} />
+                ? <button onClick={() => setConfirmDel(true)} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--miss-bg)" }}>
+                    <Trash2 className="w-2.5 h-2.5" style={{ color: "var(--miss-t)" }} />
                   </button>
-                : <button onClick={onDelete} className="px-2 h-7 rounded-lg font-bold" style={{ fontSize: 10, background: "var(--miss-t)", color: "#fff" }}>Suppr ?</button>}
+                : <button onClick={onDelete} className="px-2 h-6 rounded-md font-bold" style={{ fontSize: 9, background: "var(--miss-t)", color: "#fff" }}>Suppr</button>}
+              <button onClick={onClose} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "var(--surface2)" }}>
+                <X className="w-3 h-3" style={{ color: "var(--txt2)" }} />
+              </button>
             </div>
           </div>
-          {/* Progress bar */}
-          <div className="h-1 rounded-full overflow-hidden mt-2" style={{ background: "var(--border)" }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            {collection.author && <span style={{ fontSize: 11, color: "var(--txt3)" }}>{collection.author}</span>}
+            {enCoursCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "#FEF9C3", color: "#A16207" }}>📖 {enCoursCount}</span>}
+            {aLireCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "var(--accent-l)", color: "var(--accent)" }}>📌 {aLireCount}</span>}
+            {luCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "var(--have-bg)", color: "var(--have-t)" }}>✅ {luCount}</span>}
+            {nonOwnedCount > 0 && <span className="px-1.5 py-0.5 rounded" style={{ fontSize: 9, background: "var(--surface2)", color: "var(--txt3)" }}>📕 {nonOwnedCount}</span>}
+          </div>
+          <div className="h-1 rounded-full overflow-hidden mt-1.5" style={{ background: "var(--border)" }}>
             <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, background: pct === 100 ? "var(--have-t)" : "var(--accent)" }} />
           </div>
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 p-3">
+          {/* Numbered chips for BD/manga */}
           {viewMode === "numbered" && (
-            <div className="p-3">
-              <div className="flex flex-wrap gap-1">
-                {(total > 0 ? Array.from({ length: Math.min(total, 50) }, (_, i) => i + 1) : ownedNums).map(n => {
-                  const isOwned = ownedNums.includes(n);
-                  return (
-                    <div key={n} className="flex items-center justify-center font-bold"
-                      style={{ width: 28, height: 28, borderRadius: 6, fontSize: 10,
-                        background: isOwned ? "var(--have-bg)" : "var(--miss-bg)",
-                        color: isOwned ? "var(--have-t)" : "var(--miss-t)",
-                        border: isOwned ? "1px solid var(--have-b)" : "1px dashed var(--miss-b)" }}>
-                      {n}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="flex flex-wrap gap-1">
+              {(total > 0 ? Array.from({ length: Math.min(total, 50) }, (_, i) => i + 1) : ownedNums).map(n => {
+                const isOwned = ownedNums.includes(n);
+                return (
+                  <div key={n} className="flex items-center justify-center font-bold"
+                    style={{ width: 28, height: 28, borderRadius: 6, fontSize: 10,
+                      background: isOwned ? "var(--have-bg)" : "var(--miss-bg)",
+                      color: isOwned ? "var(--have-t)" : "var(--miss-t)",
+                      border: isOwned ? "1px solid var(--have-b)" : "1px dashed var(--miss-b)" }}>
+                    {n}
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {viewMode === "list" && (
+          {/* Grid for books */}
+          {viewMode === "grid" && (
             <>
-              {loading && <div className="flex justify-center py-6"><div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div>}
-
-              {!loading && remoteBooks.length === 0 && ownedBooks.length > 0 && ownedBooks.map(b => {
-                const s = badge(b.status);
-                return (
-                  <div key={b.id} className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
-                    <Cover src={b.cover_url} alt={b.title} width={28} height={40} className="rounded flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate" style={{ fontSize: 12, color: "var(--txt1)" }}>{b.title}</p>
-                      {b.series_index && <p style={{ fontSize: 10, color: "var(--txt3)" }}>Tome {b.series_index}</p>}
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded font-semibold flex-shrink-0" style={{ fontSize: 9, background: s.bg, color: s.color }}>{s.label}</span>
-                  </div>
-                );
-              })}
-
-              {!loading && remoteBooks.map((rb, i) => {
-                const s = rb.owned ? badge(rb.owned.status) : null;
-                return (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5"
-                    style={{ borderBottom: "1px solid var(--border)", opacity: rb.owned ? 1 : 0.5 }}>
-                    <Cover src={rb.cover_url ?? undefined} alt={rb.title} width={28} height={40} className="rounded flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate" style={{ fontSize: 12, color: rb.owned ? "var(--txt1)" : "var(--txt3)" }}>{rb.title}</p>
-                      <p style={{ fontSize: 10, color: "var(--txt3)" }}>
-                        {[rb.series_index ? `T.${rb.series_index}` : null, rb.published_year].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                    {s
-                      ? <span className="px-1.5 py-0.5 rounded font-semibold flex-shrink-0" style={{ fontSize: 9, background: s.bg, color: s.color }}>{s.label}</span>
-                      : <span className="px-1.5 py-0.5 rounded flex-shrink-0" style={{ fontSize: 9, background: "var(--surface2)", color: "var(--txt3)", border: "1px dashed var(--border)" }}>—</span>}
-                  </div>
-                );
-              })}
-
-              {!loading && remoteBooks.length === 0 && ownedBooks.length === 0 && (
-                <p className="text-center py-8" style={{ fontSize: 12, color: "var(--txt3)" }}>Aucun résultat</p>
+              {loading && <div className="flex justify-center py-8"><div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} /></div>}
+              {!loading && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  {displayBooks.map((rb, i) => {
+                    const s = statusTag(rb.owned);
+                    return (
+                      <div key={i} className="flex flex-col"
+                        style={{ opacity: rb.owned ? 1 : 0.45 }}>
+                        <div className="relative w-full" style={{ aspectRatio: "2/3" }}>
+                          <Cover src={rb.cover_url ?? undefined} alt={rb.title} className="w-full h-full rounded-lg" />
+                          <span className="absolute bottom-0 left-0 right-0 text-center py-0.5 font-bold"
+                            style={{
+                              fontSize: 8, background: s.bg, color: s.color,
+                              borderRadius: "0 0 8px 8px",
+                              border: s.border ? "1px dashed var(--border)" : "none",
+                              borderTop: "none",
+                            }}>
+                            {s.label}
+                          </span>
+                        </div>
+                        <div style={{ height: 28 }}>
+                          <p className="font-semibold mt-1 line-clamp-2" style={{ fontSize: 10, color: rb.owned ? "var(--txt1)" : "var(--txt3)", lineHeight: 1.2 }}>
+                            {rb.title}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </>
           )}

@@ -47,12 +47,12 @@ export default function BookCard({ book, onClick }: Props) {
         )}
       </div>
 
-      {/* Info */}
-      <div style={{ padding: "8px 8px 10px" }}>
-        <p className="font-semibold line-clamp-2" style={{ fontSize: 12, color: "var(--txt1)", lineHeight: 1.3 }}>
+      {/* Info — fixed height */}
+      <div style={{ padding: "6px 6px 8px", height: 58 }}>
+        <p className="font-semibold line-clamp-2" style={{ fontSize: 11, color: "var(--txt1)", lineHeight: 1.3 }}>
           {book.title}
         </p>
-        <p className="truncate mt-0.5" style={{ fontSize: 11, color: "var(--txt2)" }}>
+        <p className="truncate mt-0.5" style={{ fontSize: 10, color: "var(--txt2)" }}>
           {book.authors[0]}
         </p>
         {book.rating && (
